@@ -1,0 +1,90 @@
+# ArborOS .gitignore
+
+# ===== Build Artifacts =====
+*.iso
+*.img
+build/output/
+build/work/
+build/iso/
+livecd-temp/
+livecd-work/
+liveos-proper/
+LiveOS-final/
+
+# Temporary build files
+*.squashfs
+rootfs.img
+mksquashfs-bin
+
+# ===== Logs =====
+*.log
+*.log.*
+build/*.log
+
+# ===== OS Generated Files =====
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# ===== Editor Files =====
+*~
+*.swp
+*.swo
+*.swn
+.vscode/
+.idea/
+*.sublime-*
+.vim/
+
+# ===== Temporary Files =====
+*.tmp
+*.temp
+*.bak
+*.backup
+*.old
+
+# ===== Python =====
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+*.egg-info/
+
+# ===== Archives =====
+*.tar
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.zip
+*.rar
+*.7z
+
+# ===== Test Files =====
+test-results/
+coverage/
+.pytest_cache/
+
+# ===== Secrets (safety) =====
+*.key
+*.pem
+*.p12
+secrets.txt
+.env
+.env.*
+
+# ===== Keep These =====
+!.gitkeep
+!README.md
+!LICENSE
+
+# ===== Internal Setup Files =====
+.commit-plan.md
+setup-git-history.bat
