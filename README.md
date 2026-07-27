@@ -104,7 +104,7 @@ ArborOS is in early development. Contribution guidelines coming in later phases.
 
 ## License
 
-License to be determined.
+MIT License - see [LICENSE](LICENSE) file for details.
 
 ## Contact
 
