@@ -1,7 +1,8 @@
 #!/bin/bash
-# Arbor OS ISO Builder - Phase 2
-# Working Version - Tested 2026-07-28
-# Builds minimal bootable Fedora-based live system
+# Arbor OS ISO Builder - Phase 4
+# Version: 0.3
+# Installer Build - Calamares Integration
+# Builds Fedora-based live system with graphical installer
 
 set -e
 
@@ -104,7 +105,59 @@ create_rootfs() {
         dracut-live \
         dracut-network
     
-    log "Rootfs created"
+    log "Installing hardware support packages..."
+    dnf --installroot="$ROOTFS" \
+        --releasever=39 \
+        --setopt=install_weak_deps=False \
+        --nodocs \
+        -y install \
+        pciutils \
+        usbutils \
+        lshw \
+        dmidecode \
+        linux-firmware \
+        iwl*-firmware \
+        mesa-dri-drivers \
+        mesa-vulkan-drivers \
+        pipewire \
+        pipewire-alsa \
+        pipewire-pulseaudio \
+        wireplumber \
+        alsa-utils \
+        bluez \
+        bluez-tools \
+        libinput \
+        power-profiles-daemon \
+        upower \
+        fwupd \
+        iw \
+        wireless-tools
+    
+    log "Installing Calamares installer..."
+    dnf --installroot="$ROOTFS" \
+        --releasever=39 \
+        --nodocs \
+        -y install \
+        calamares \
+        qt5-qtbase \
+        qt5-qtsvg \
+        qt5-qtdeclarative \
+        qt5-qtquickcontrols2 \
+        kpmcore \
+        parted \
+        e2fsprogs \
+        dosfstools \
+        btrfs-progs \
+        xfsprogs \
+        grub2 \
+        grub2-efi-x64 \
+        efibootmgr \
+        os-prober \
+        xorg-x11-server-Xorg \
+        xorg-x11-xinit \
+        xorg-x11-drv-libinput
+    
+    log "Rootfs created with installer"
 }
 
 # Configure system
@@ -130,11 +183,50 @@ EOF
     
     chroot "$ROOTFS" systemctl enable NetworkManager
     chroot "$ROOTFS" systemctl enable sshd
+    chroot "$ROOTFS" systemctl enable bluetooth
+    chroot "$ROOTFS" systemctl enable fwupd
+    
+    # Enable PipeWire for user session
+    mkdir -p "$ROOTFS/etc/skel/.config/systemd/user/default.target.wants"
+    chroot "$ROOTFS" systemctl --user --global enable pipewire pipewire-pulse wireplumber 2>/dev/null || true
     
     chroot "$ROOTFS" ln -sf /usr/share/zoneinfo/UTC /etc/localtime
     echo "LANG=en_US.UTF-8" > "$ROOTFS/etc/locale.conf"
     
-    log "System configured"
+    # Copy hardware detection script
+    mkdir -p "$ROOTFS/usr/local/bin"
+    if [ -f "$PROJECT_ROOT/system/hardware-detection.sh" ]; then
+        cp "$PROJECT_ROOT/system/hardware-detection.sh" "$ROOTFS/usr/local/bin/arbor-hwinfo"
+        chmod +x "$ROOTFS/usr/local/bin/arbor-hwinfo"
+        log "Hardware detection script installed"
+    fi
+    
+    # Copy Calamares configuration
+    log "Installing Calamares configuration..."
+    mkdir -p "$ROOTFS/etc/calamares"
+    mkdir -p "$ROOTFS/etc/calamares/modules"
+    mkdir -p "$ROOTFS/etc/calamares/branding/arbor"
+    
+    if [ -d "$PROJECT_ROOT/installer/calamares" ]; then
+        cp "$PROJECT_ROOT/installer/calamares/settings.conf" "$ROOTFS/etc/calamares/" 2>/dev/null || true
+        cp "$PROJECT_ROOT/installer/calamares/modules/"*.conf "$ROOTFS/etc/calamares/modules/" 2>/dev/null || true
+        cp -r "$PROJECT_ROOT/installer/calamares/branding/arbor/"* "$ROOTFS/etc/calamares/branding/arbor/" 2>/dev/null || true
+        log "Calamares configuration installed"
+    fi
+    
+    # Create autostart for Calamares in live session
+    mkdir -p "$ROOTFS/etc/xdg/autostart"
+    cat > "$ROOTFS/etc/xdg/autostart/calamares.desktop" <<EOF
+[Desktop Entry]
+Type=Application
+Name=Install Arbor OS
+Exec=calamares
+Icon=calamares
+Terminal=false
+Categories=System;
+EOF
+    
+    log "System configured with hardware support and installer"
 }
 
 # Create initramfs with live support
