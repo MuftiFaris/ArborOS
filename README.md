@@ -12,9 +12,10 @@ Privacy-focused, user-controlled Linux distribution built from the ground up.
 
 ## Project Status
 
-**Current Phase:** Phase 2 - Base Linux System ✅ Complete
+**Current Phase:** Phase 4 - Installer (In Progress)  
+**Latest Working ISO:** ArborOS-phase3.iso (Phase 3 - Hardware Support)
 
-ArborOS is under active development. Phase 2 has successfully delivered a bootable base system with core functionality.
+ArborOS is under active development. Three phases completed with working bootable system including hardware support.
 
 ## What is ArborOS?
 
@@ -48,9 +49,9 @@ ArborOS/
 
 - ✅ **Phase 0** - Implementation Master Planning
 - ✅ **Phase 1** - Repository Foundation  
-- ✅ **Phase 2** - Base Linux System
-- 🔜 **Phase 3** - Hardware Support
-- 📋 **Phase 4** - Installer
+- ✅ **Phase 2** - Base Linux System (Bootable, Network, 315MB RAM)
+- ✅ **Phase 3** - Hardware Support (GPU, Audio, WiFi firmware, Power management)
+- ⚠️ **Phase 4** - Installer (Config ready, implementation pending)
 - 📋 **Phase 5** - Desktop Environment
 - 📋 **Phase 6** - Core Applications
 - 📋 **Phase 7** - Privacy & User Control
@@ -58,34 +59,71 @@ ArborOS/
 - 📋 **Phase 9** - Performance Optimization
 - 📋 **Phase 10** - Final QA
 
-## Phase 2 Achievements
+## Current System Status
 
-The base system is now functional with:
+**ArborOS Phase 3** (`ArborOS-phase3.iso` - 863MB)
 
-- Custom Linux kernel (6.6.x LTS)
-- systemd-based init system
-- Basic networking stack
-- Package management foundation
-- Boot testing framework
-- ISO build pipeline
+**Working Features:**
+- ✅ Bootable live system (Fedora 39 base)
+- ✅ Console login (arbor/arbor)
+- ✅ Network connectivity (Ethernet, WiFi firmware)
+- ✅ Hardware detection (`arbor-hwinfo` tool)
+- ✅ Audio support (PipeWire stack)
+- ✅ GPU drivers (Mesa for Intel/AMD)
+- ✅ Bluetooth support (BlueZ)
+- ✅ Power management
+- ✅ Memory efficient (317MB idle RAM)
+- ✅ ~340+ packages installed
 
-See `Documentation/07-Implementation/Phase Plan/Phase 2 - Base Linux System/` for detailed implementation.
+**Phase 3 Additions:**
+- Hardware detection tool
+- Audio stack (PipeWire + WirePlumber + ALSA)
+- GPU drivers (Intel/AMD Mesa, NVIDIA nouveau)
+- WiFi/Bluetooth firmware
+- Power management tools
+- Hardware utilities (lspci, lsusb, lshw)
+
+**Phase 4 Progress:**
+- ⚠️ Calamares installer configs ready
+- ⚠️ Implementation blocked (package unavailable)
+- ⏸️ Deferred to Phase 5+ (needs desktop first)
+
+**Known Limitations:**
+- Console-only (no GUI) - Phase 5
+- Manual installation required
+- No applications yet - Phase 6
+- Fedora branding visible (ArborOS branding pending)
+
+See detailed documentation in `Documentation/07-Implementation/Phase Plan/`
 
 ## Quick Start
 
-**Building the ISO:**
+**Latest ISO:** ArborOS-phase3.iso (Phase 3 - Hardware Support)
+
+**Testing in VirtualBox:**
 ```bash
-cd Code/build
-bash create_iso.sh
+# Load ISO
+# RAM: 2GB minimum
+# Boot
+# Login: arbor / arbor
+
+# Test hardware detection
+sudo arbor-hwinfo
+
+# Test network
+ping google.com
+
+# Check memory
+free -h
 ```
 
-**Testing:**
+**Building ISO (Ubuntu + Docker):**
 ```bash
-cd Code/tests  
-bash test_boot.sh
+# See build documentation
+Documentation/07-Implementation/Phase Plan/Phase 3 - Hardware Support/README.md
 ```
 
-Full testing instructions: `Documentation/07-Implementation/Phase Plan/Phase 2 - Base Linux System/HOW_TO_TEST.md`
+Full documentation: `Documentation/07-Implementation/Phase Plan/`
 
 ## Documentation
 
@@ -100,16 +138,27 @@ Start with `Documentation/06-Brand/FINAL_OS_SPECIFICATION_V2.md` for complete OS
 
 ## Contributing
 
-ArborOS is in early development. Contribution guidelines coming in later phases.
+ArborOS is in early development. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Testing reports welcome!** Hardware compatibility feedback helps improve support.
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
+## Project Links
+
+- **Repository:** https://github.com/MuftiFaris/ArborOS
+- **Issues:** https://github.com/MuftiFaris/ArborOS/issues
+- **Releases:** https://github.com/MuftiFaris/ArborOS/releases
+
 ## Contact
 
-Project maintained by [Your Info Here]
+**Maintainer:** Mufti Faris  
+**GitHub:** [@MuftiFaris](https://github.com/MuftiFaris)
+
+For questions or discussion, open an issue.
 
 ---
 
-**Note:** This is pre-alpha software. Not ready for production use.
+**Disclaimer:** This is pre-alpha software under active development. Not recommended for production use. Use at your own risk.

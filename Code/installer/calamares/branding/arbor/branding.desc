@@ -1,0 +1,29 @@
+# Arbor OS Branding for Calamares Installer
+
+---
+componentName: arbor
+
+strings:
+    productName:         "Arbor OS"
+    shortProductName:    "Arbor"
+    version:             "0.3"
+    shortVersion:        "0.3"
+    versionedName:       "Arbor OS 0.3"
+    shortVersionedName:  "Arbor 0.3"
+    bootloaderEntryName: "Arbor OS"
+    productUrl:          "https://github.com/MuftiFaris/ArborOS"
+    supportUrl:          "https://github.com/MuftiFaris/ArborOS/issues"
+    knownIssuesUrl:      "https://github.com/MuftiFaris/ArborOS/issues"
+    releaseNotesUrl:     "https://github.com/MuftiFaris/ArborOS/releases"
+
+images:
+    productLogo:         "logo.png"
+    productIcon:         "logo.png"
+    productWelcome:      "languages.png"
+
+slideshow:              "show.qml"
+
+style:
+   sidebarBackground:    "#0F1215"
+   sidebarText:          "#F0F6FC"
+   sidebarTextSelect:    "#2DD4BF"
