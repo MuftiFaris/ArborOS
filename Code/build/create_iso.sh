@@ -1,7 +1,8 @@
 #!/bin/bash
-# Arbor OS ISO Builder - Phase 2
-# Working Version - Tested 2026-07-28
-# Builds minimal bootable Fedora-based live system
+# Arbor OS ISO Builder - Phase 3
+# Version: 0.2
+# Hardware Support Build
+# Builds Fedora-based system with full hardware compatibility
 
 set -e
 
@@ -104,7 +105,35 @@ create_rootfs() {
         dracut-live \
         dracut-network
     
-    log "Rootfs created"
+    log "Installing hardware support packages..."
+    dnf --installroot="$ROOTFS" \
+        --releasever=39 \
+        --setopt=install_weak_deps=False \
+        --nodocs \
+        -y install \
+        pciutils \
+        usbutils \
+        lshw \
+        dmidecode \
+        linux-firmware \
+        iwl*-firmware \
+        mesa-dri-drivers \
+        mesa-vulkan-drivers \
+        pipewire \
+        pipewire-alsa \
+        pipewire-pulseaudio \
+        wireplumber \
+        alsa-utils \
+        bluez \
+        bluez-tools \
+        libinput \
+        power-profiles-daemon \
+        upower \
+        fwupd \
+        iw \
+        wireless-tools
+    
+    log "Rootfs created with hardware support"
 }
 
 # Configure system
@@ -130,11 +159,25 @@ EOF
     
     chroot "$ROOTFS" systemctl enable NetworkManager
     chroot "$ROOTFS" systemctl enable sshd
+    chroot "$ROOTFS" systemctl enable bluetooth
+    chroot "$ROOTFS" systemctl enable fwupd
+    
+    # Enable PipeWire for user session
+    mkdir -p "$ROOTFS/etc/skel/.config/systemd/user/default.target.wants"
+    chroot "$ROOTFS" systemctl --user --global enable pipewire pipewire-pulse wireplumber 2>/dev/null || true
     
     chroot "$ROOTFS" ln -sf /usr/share/zoneinfo/UTC /etc/localtime
     echo "LANG=en_US.UTF-8" > "$ROOTFS/etc/locale.conf"
     
-    log "System configured"
+    # Copy hardware detection script
+    mkdir -p "$ROOTFS/usr/local/bin"
+    if [ -f "$PROJECT_ROOT/system/hardware-detection.sh" ]; then
+        cp "$PROJECT_ROOT/system/hardware-detection.sh" "$ROOTFS/usr/local/bin/arbor-hwinfo"
+        chmod +x "$ROOTFS/usr/local/bin/arbor-hwinfo"
+        log "Hardware detection script installed"
+    fi
+    
+    log "System configured with hardware support"
 }
 
 # Create initramfs with live support
@@ -210,7 +253,7 @@ build_iso() {
     log "Building ISO image..."
     
     local ISO_LABEL="ArborOS"
-    local ISO_FILE="${OUTPUT_DIR}/ArborOS-0.1.iso"
+    local ISO_FILE="${OUTPUT_DIR}/ArborOS-0.2.iso"
     
     mkisofs -o "$ISO_FILE" \
         -b isolinux/isolinux.bin \
@@ -225,11 +268,13 @@ build_iso() {
     
     log "ISO created: $ISO_FILE"
     log "Size: $(du -h "$ISO_FILE" | cut -f1)"
+    log "Version: 0.2 (Phase 3 - Hardware Support)"
 }
 
 # Main
 main() {
-    log "Arbor OS ISO Builder - Phase 2"
+    log "Arbor OS ISO Builder - Phase 3"
+    log "Version: 0.2 - Hardware Support"
     log "================================"
     
     check_dependencies
@@ -243,9 +288,15 @@ main() {
     
     log ""
     log "Build complete!"
-    log "ISO: ${OUTPUT_DIR}/ArborOS-0.1.iso"
+    log "ISO: ${OUTPUT_DIR}/ArborOS-0.2.iso"
+    log "Changes from 0.1:"
+    log "  - Full hardware support (GPU, WiFi, Audio, Power)"
+    log "  - PipeWire audio stack"
+    log "  - Bluetooth support"
+    log "  - Power management"
+    log "  - Hardware detection tool (arbor-hwinfo)"
     log ""
-    log "Test with: qemu-system-x86_64 -m 2G -cdrom ${OUTPUT_DIR}/ArborOS-0.1.iso"
+    log "Test with: qemu-system-x86_64 -m 2G -cdrom ${OUTPUT_DIR}/ArborOS-0.2.iso"
 }
 
 main "$@"
