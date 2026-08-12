@@ -138,16 +138,27 @@ Start with `Documentation/06-Brand/FINAL_OS_SPECIFICATION_V2.md` for complete OS
 
 ## Contributing
 
-ArborOS is in early development. Contribution guidelines coming in later phases.
+ArborOS is in early development. See [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+**Testing reports welcome!** Hardware compatibility feedback helps improve support.
 
 ## License
 
 MIT License - see [LICENSE](LICENSE) file for details.
 
+## Project Links
+
+- **Repository:** https://github.com/MuftiFaris/ArborOS
+- **Issues:** https://github.com/MuftiFaris/ArborOS/issues
+- **Releases:** https://github.com/MuftiFaris/ArborOS/releases
+
 ## Contact
 
-Project maintained by [Your Info Here]
+**Maintainer:** Mufti Faris  
+**GitHub:** [@MuftiFaris](https://github.com/MuftiFaris)
+
+For questions or discussion, open an issue.
 
 ---
 
-**Note:** This is pre-alpha software. Not ready for production use.
+**Disclaimer:** This is pre-alpha software under active development. Not recommended for production use. Use at your own risk.

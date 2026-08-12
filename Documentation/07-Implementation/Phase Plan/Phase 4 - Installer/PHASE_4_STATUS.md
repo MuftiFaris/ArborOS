@@ -9,14 +9,14 @@
 
 ## Overview
 
-Phase 4 aims to create graphical installer using Calamares framework.
+Phase 4 targets graphical installer with Calamares framework.
 
 **Current Status:**
-- ✅ Calamares configuration files created
-- ✅ Branding configuration ready
+- ✅ Configuration files created
+- ✅ Branding ready
 - ✅ Module configs complete
-- ❌ Calamares package not available in Fedora 39
-- ❌ GUI installer not functional yet
+- ❌ Calamares unavailable in Fedora 39 repos
+- ❌ GUI installer blocked
 
 ---
 
@@ -129,16 +129,16 @@ ls -la /etc/calamares/
 
 **Defer GUI installer to Phase 5+**
 
-**Reasoning:**
+**Why:**
 1. Calamares unavailable in Fedora 39 repos
-2. Building from source = maintenance burden
-3. GUI installer needs desktop environment anyway (Phase 5)
-4. Current focus: stable bootable system with hardware support
+2. Building from source adds maintenance burden
+3. GUI installer requires desktop environment (Phase 5)
+4. Focus remains: stable bootable system with hardware
 
-**Alternative Path:**
-- Phase 5: Desktop Environment (GNOME/KDE/lightweight)
-- Phase 5.5: Integrate installer with desktop
-- Use live session + manual install script for now
+**Path Forward:**
+- Phase 5: Desktop Environment
+- Phase 5.5: Installer integration
+- Manual install script for interim
 
 ---
 
@@ -221,22 +221,22 @@ ls -la /etc/calamares/
 
 ---
 
-## Lessons Learned
+## Lessons
 
-1. **Check package availability before planning**
+1. **Verify package availability first**
    - Calamares assumed available
-   - Fedora 39 doesn't have it in repos
-   - Should verify first
+   - Fedora 39 repos don't include it
+   - Check before planning
 
-2. **GUI installer needs desktop**
-   - X11 alone insufficient
-   - Needs window manager/DE
-   - Order matters: Desktop → Installer
+2. **GUI needs desktop**
+   - X11 insufficient alone
+   - Requires window manager/DE
+   - Order: Desktop → Installer
 
-3. **Scope creep management**
-   - Phase 4 too ambitious without Phase 5
-   - Should follow spec order strictly
-   - Desktop first, then installer
+3. **Scope management**
+   - Phase 4 overreached without Phase 5
+   - Follow spec order
+   - Desktop prerequisite for installer
 
 ---
 

@@ -2,13 +2,13 @@
 
 **Installer:** Calamares  
 **Version:** 0.3  
-**Status:** In Development
+**Status:** Config Ready / Implementation Pending
 
 ---
 
 ## Overview
 
-Phase 4 implements graphical installer using Calamares framework.
+Phase 4 graphical installer using Calamares framework.
 
 **Features:**
 - Graphical installation wizard
@@ -162,15 +162,15 @@ Included in `create_iso.sh` Phase 4 update.
 ## Known Limitations
 
 **Phase 4:**
-- No desktop environment yet (Phase 5)
+- No desktop environment (Phase 5)
 - No applications (Phase 6)
-- Basic terminal login only
-- Encryption not implemented yet
+- Terminal login only
+- Encryption pending
 
-**After install, system boots to:**
+**Post-install:**
 - Console login
-- Username/password from installer
-- Minimal system
+- User credentials from installer
+- Minimal system only
 
 ---
 

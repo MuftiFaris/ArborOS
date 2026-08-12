@@ -88,3 +88,5 @@ secrets.txt
 # ===== Internal Setup Files =====
 .commit-plan.md
 setup-git-history.bat
+setup-*.bat
+*.internal.md
