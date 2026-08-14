@@ -337,8 +337,8 @@ build_iso() {
 
 # Main
 main() {
-    log "Arbor OS ISO Builder - Phase 3"
-    log "Version: 0.2 - Hardware Support"
+    log "Arbor OS ISO Builder - Phase 5"
+    log "Version: 0.4 - Desktop Environment"
     log "================================"
     
     check_dependencies
