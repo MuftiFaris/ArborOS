@@ -317,7 +317,7 @@ build_iso() {
     log "Building ISO image..."
     
     local ISO_LABEL="ArborOS"
-    local ISO_FILE="${OUTPUT_DIR}/ArborOS-phase5.iso"
+    local ISO_FILE="${OUTPUT_DIR}/ArborOS-0.5.iso"
     
     mkisofs -o "$ISO_FILE" \
         -b isolinux/isolinux.bin \

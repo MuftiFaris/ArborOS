@@ -27,13 +27,13 @@ log "ArborOS Docker Build"
 log "===================="
 log ""
 log "Building in Docker container..."
-log "Output: ArborOS-phase3.iso"
+log "Output: ArborOS-0.5.iso"
 log ""
 
 # Run build in Docker container
 docker run --rm -it --privileged \
     -v "$(dirname "$(dirname "$SCRIPT_DIR")"):/workspace" \
-    fedora:39 bash -c '
+    fedora:39 bash /workspace/Code/build/create_iso.sh
 
 set -e
 
@@ -148,9 +148,9 @@ log "================================"
 '
 
 # Check if ISO created
-if [ -f "$(dirname "$(dirname "$SCRIPT_DIR")")/ArborOS-phase3.iso" ]; then
+if [ -f "$(dirname "$(dirname "$SCRIPT_DIR")")/Code/build/output/ArborOS-0.5.iso" ]; then
     log ""
-    log "✅ ISO ready: ArborOS-phase3.iso"
+    log "✅ ISO ready: Code/build/output/ArborOS-0.5.iso"
     log ""
     log "Test: VirtualBox > New VM > Use ISO"
 else
