@@ -18,7 +18,7 @@ Write-Host ""
 Write-Host "[BUILD] Starting Docker build..." -ForegroundColor Cyan
 Write-Host ""
 
-docker run --rm -it --privileged -v "${PWD}:/workspace" fedora:39 bash -c @"
+docker run --rm -it --privileged -v "${PWD}:/workspace" fedora:39 /bin/bash -c @"
 set -e
 cd /tmp
 
@@ -47,10 +47,7 @@ chmod 0440 /tmp/build/work/rootfs/etc/sudoers.d/wheel
 chroot /tmp/build/work/rootfs systemctl enable NetworkManager lightdm 2>/dev/null
 chroot /tmp/build/work/rootfs systemctl set-default graphical.target 2>/dev/null
 
-if [ -f /workspace/Code/system/hardware-detection.sh ]; then
-  cp /workspace/Code/system/hardware-detection.sh /tmp/build/work/rootfs/usr/local/bin/arbor-hwinfo
-  chmod +x /tmp/build/work/rootfs/usr/local/bin/arbor-hwinfo
-fi
+test -f /workspace/Code/system/hardware-detection.sh && cp /workspace/Code/system/hardware-detection.sh /tmp/build/work/rootfs/usr/local/bin/arbor-hwinfo && chmod +x /tmp/build/work/rootfs/usr/local/bin/arbor-hwinfo || true
 
 mkdir -p /tmp/build/work/rootfs/etc/skel/.config/lxqt
 printf '[Desktop]\nSession=lxqt\n' > /tmp/build/work/rootfs/etc/skel/.dmrc
@@ -80,12 +77,12 @@ isohybrid /tmp/ArborOS-0.5.iso 2>/dev/null
 
 mkdir -p /workspace/Code/build/output
 cp /tmp/ArborOS-0.5.iso /workspace/Code/build/output/ArborOS-0.5.iso
-SIZE=\$(du -h /workspace/Code/build/output/ArborOS-0.5.iso | cut -f1)
 
 echo ''
 echo '================================'
 echo 'BUILD COMPLETE!'
-echo \"ISO: Code/build/output/ArborOS-0.5.iso (\$SIZE)\"
+echo 'ISO: Code/build/output/ArborOS-0.5.iso'
+ls -lh /workspace/Code/build/output/ArborOS-0.5.iso
 echo '================================'
 "@
 
