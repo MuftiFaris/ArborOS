@@ -130,8 +130,7 @@ create_rootfs() {
         power-profiles-daemon \
         upower \
         fwupd \
-        iw \
-        wireless-tools
+        iw
     
     log "Installing LXQt Desktop Environment..."
     dnf --installroot="$ROOTFS" \
