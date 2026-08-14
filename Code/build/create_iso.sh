@@ -1,8 +1,8 @@
 #!/bin/bash
-# Arbor OS ISO Builder - Phase 3
-# Version: 0.2
-# Hardware Support Build
-# Builds Fedora-based system with full hardware compatibility
+# Arbor OS ISO Builder - Phase 5
+# Version: 0.4
+# Desktop Environment Build
+# Builds Fedora-based system with LXQt desktop
 
 set -e
 
@@ -133,6 +133,40 @@ create_rootfs() {
         iw \
         wireless-tools
     
+    log "Installing LXQt Desktop Environment..."
+    dnf --installroot="$ROOTFS" \
+        --releasever=39 \
+        --setopt=install_weak_deps=False \
+        --nodocs \
+        -y install \
+        lxqt-about \
+        lxqt-config \
+        lxqt-globalkeys \
+        lxqt-notificationd \
+        lxqt-openssh-askpass \
+        lxqt-panel \
+        lxqt-policykit \
+        lxqt-powermanagement \
+        lxqt-qtplugin \
+        lxqt-runner \
+        lxqt-session \
+        lxqt-sudo \
+        openbox \
+        obconf-qt \
+        pcmanfm-qt \
+        qterminal \
+        featherpad \
+        lightdm \
+        lightdm-gtk \
+        network-manager-applet \
+        pavucontrol-qt \
+        lxqt-archiver \
+        qps \
+        screengrab \
+        xscreensaver \
+        adwaita-qt5 \
+        breeze-icon-theme
+    
     log "Rootfs created with hardware support"
 }
 
@@ -161,6 +195,8 @@ EOF
     chroot "$ROOTFS" systemctl enable sshd
     chroot "$ROOTFS" systemctl enable bluetooth
     chroot "$ROOTFS" systemctl enable fwupd
+    chroot "$ROOTFS" systemctl enable lightdm
+    chroot "$ROOTFS" systemctl set-default graphical.target
     
     # Enable PipeWire for user session
     mkdir -p "$ROOTFS/etc/skel/.config/systemd/user/default.target.wants"
@@ -177,7 +213,35 @@ EOF
         log "Hardware detection script installed"
     fi
     
-    log "System configured with hardware support"
+    # Configure LXQt as default session
+    mkdir -p "$ROOTFS/etc/skel/.config/lxqt"
+    echo "[Desktop]" > "$ROOTFS/etc/skel/.dmrc"
+    echo "Session=lxqt" >> "$ROOTFS/etc/skel/.dmrc"
+    
+    # Set Arbor OS branding
+    mkdir -p "$ROOTFS/usr/share/pixmaps"
+    cat > "$ROOTFS/etc/os-release" <<EOF
+NAME="Arbor OS"
+VERSION="0.4 (Phase 5 - Desktop)"
+ID=arbor-os
+ID_LIKE=fedora
+VERSION_ID=0.4
+PRETTY_NAME="Arbor OS 0.4 (Phase 5)"
+ANSI_COLOR="0;32"
+HOME_URL="https://github.com/MuftiFaris/ArborOS"
+BUG_REPORT_URL="https://github.com/MuftiFaris/ArborOS/issues"
+EOF
+    
+    # LightDM configuration
+    mkdir -p "$ROOTFS/etc/lightdm"
+    cat > "$ROOTFS/etc/lightdm/lightdm.conf" <<EOF
+[Seat:*]
+autologin-user=arbor
+autologin-user-timeout=0
+greeter-session=lightdm-gtk-greeter
+EOF
+    
+    log "System configured with LXQt desktop"
 }
 
 # Create initramfs with live support
@@ -253,7 +317,7 @@ build_iso() {
     log "Building ISO image..."
     
     local ISO_LABEL="ArborOS"
-    local ISO_FILE="${OUTPUT_DIR}/ArborOS-0.2.iso"
+    local ISO_FILE="${OUTPUT_DIR}/ArborOS-phase5.iso"
     
     mkisofs -o "$ISO_FILE" \
         -b isolinux/isolinux.bin \
@@ -268,7 +332,7 @@ build_iso() {
     
     log "ISO created: $ISO_FILE"
     log "Size: $(du -h "$ISO_FILE" | cut -f1)"
-    log "Version: 0.2 (Phase 3 - Hardware Support)"
+    log "Version: 0.4 (Phase 5 - Desktop Environment)"
 }
 
 # Main
