@@ -19,7 +19,7 @@ echo Starting build in Docker...
 echo This takes 15-30 minutes
 echo.
 
-docker run --rm -it --privileged -v "%CD%:/workspace" fedora:39 bash /workspace/Code/build/create_iso.sh
+docker run --rm -it --privileged -v "%CD%:/workspace" fedora:39 bash -c "cd /workspace/Code/build && bash create_iso.sh"
 
 echo.
 echo ========================================
