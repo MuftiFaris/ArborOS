@@ -12,10 +12,10 @@ Privacy-focused, user-controlled Linux distribution built from the ground up.
 
 ## Project Status
 
-**Current Phase:** Phase 4 - Installer (In Progress)  
-**Latest Working ISO:** ArborOS-phase3.iso (Phase 3 - Hardware Support)
+**Current Phase:** Phase 5 - Desktop Environment ✅ **COMPLETE**  
+**Latest Working ISO:** ArborOS-0.5.iso (Phase 5 - LXQt Desktop)
 
-ArborOS is under active development. Three phases completed with working bootable system including hardware support.
+ArborOS is under active development. Five phases completed with working desktop environment.
 
 ## What is ArborOS?
 
@@ -51,8 +51,8 @@ ArborOS/
 - ✅ **Phase 1** - Repository Foundation  
 - ✅ **Phase 2** - Base Linux System (Bootable, Network, 315MB RAM)
 - ✅ **Phase 3** - Hardware Support (GPU, Audio, WiFi firmware, Power management)
-- ⚠️ **Phase 4** - Installer (Config ready, implementation pending)
-- 📋 **Phase 5** - Desktop Environment
+- ⚠️ **Phase 4** - Installer (Config ready, deferred to Phase 6+)
+- ✅ **Phase 5** - Desktop Environment (LXQt, 400MB RAM, Working)
 - 📋 **Phase 6** - Core Applications
 - 📋 **Phase 7** - Privacy & User Control
 - 📋 **Phase 8** - Update & Recovery
@@ -61,69 +61,79 @@ ArborOS/
 
 ## Current System Status
 
-**ArborOS Phase 3** (`ArborOS-phase3.iso` - 863MB)
+**ArborOS Phase 5** (`ArborOS-0.5.iso` - ~1.2-1.5 GB)
 
 **Working Features:**
 - ✅ Bootable live system (Fedora 39 base)
-- ✅ Console login (arbor/arbor)
+- ✅ LXQt desktop environment with GUI
+- ✅ LightDM display manager with autologin
 - ✅ Network connectivity (Ethernet, WiFi firmware)
 - ✅ Hardware detection (`arbor-hwinfo` tool)
 - ✅ Audio support (PipeWire stack)
 - ✅ GPU drivers (Mesa for Intel/AMD)
 - ✅ Bluetooth support (BlueZ)
 - ✅ Power management
-- ✅ Memory efficient (317MB idle RAM)
-- ✅ ~340+ packages installed
+- ✅ Memory efficient (400MB idle RAM)
+- ✅ File manager, terminal, text editor
+- ✅ ~600-700 packages installed
 
-**Phase 3 Additions:**
-- Hardware detection tool
-- Audio stack (PipeWire + WirePlumber + ALSA)
-- GPU drivers (Intel/AMD Mesa, NVIDIA nouveau)
-- WiFi/Bluetooth firmware
-- Power management tools
-- Hardware utilities (lspci, lsusb, lshw)
+**Phase 5 Additions:**
+- LXQt lightweight desktop environment
+- LightDM display manager
+- Openbox window manager
+- PCManFM-Qt file manager
+- QTerminal terminal emulator
+- Featherpad text editor
+- Network Manager GUI applet
+- Breeze icon theme
 
-**Phase 4 Progress:**
+**Phase 4 Status:**
 - ⚠️ Calamares installer configs ready
-- ⚠️ Implementation blocked (package unavailable)
-- ⏸️ Deferred to Phase 5+ (needs desktop first)
+- ⏸️ Deferred to Phase 6+ (desktop now available)
 
 **Known Limitations:**
-- Console-only (no GUI) - Phase 5
-- Manual installation required
-- No applications yet - Phase 6
-- Fedora branding visible (ArborOS branding pending)
+- Manual installation required (installer coming in Phase 6+)
+- Limited applications (browser, office coming in Phase 6)
+- Fedora branding visible (ArborOS branding in Phase 7)
 
 See detailed documentation in `Documentation/07-Implementation/Phase Plan/`
 
 ## Quick Start
 
-**Latest ISO:** ArborOS-phase3.iso (Phase 3 - Hardware Support)
+**Latest ISO:** ArborOS-0.5.iso (Phase 5 - Desktop Environment)
 
 **Testing in VirtualBox:**
 ```bash
-# Load ISO
-# RAM: 2GB minimum
-# Boot
-# Login: arbor / arbor
+# Create VM:
+# - Type: Linux / Fedora (64-bit)
+# - RAM: 2GB minimum
+# - Load ArborOS-0.5.iso
 
-# Test hardware detection
-sudo arbor-hwinfo
+# Boot to desktop (auto-login)
+# Login: arbor / arbor (if needed)
 
-# Test network
-ping google.com
-
-# Check memory
-free -h
+# Test desktop:
+# - Open file manager
+# - Launch terminal
+# - Test network connectivity
 ```
 
-**Building ISO (Ubuntu + Docker):**
+**Building ISO:**
+
+**Windows:**
+```powershell
+cd Code\build
+.\build-final.ps1
+```
+
+**Linux:**
 ```bash
-# See build documentation
-Documentation/07-Implementation/Phase Plan/Phase 3 - Hardware Support/README.md
+cd Code/build
+chmod +x build-final.sh
+sudo bash build-final.sh
 ```
 
-Full documentation: `Documentation/07-Implementation/Phase Plan/`
+Full documentation: `Code/build/README.md`
 
 ## Documentation
 

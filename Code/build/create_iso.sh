@@ -268,8 +268,24 @@ setup_bootloader() {
     local KERNEL_VERSION=$(ls "$ROOTFS/lib/modules" | head -n1)
     
     mkdir -p "$ISO_DIR/boot"
-    cp "$ROOTFS/boot/vmlinuz-${KERNEL_VERSION}" "$ISO_DIR/boot/vmlinuz"
+    
+    # Copy kernel (handle both compressed and uncompressed)
+    if [ -f "$ROOTFS/boot/vmlinuz-${KERNEL_VERSION}" ]; then
+        cp "$ROOTFS/boot/vmlinuz-${KERNEL_VERSION}" "$ISO_DIR/boot/vmlinuz"
+    else
+        # Fallback: find any vmlinuz file
+        cp "$ROOTFS/boot/vmlinuz-"* "$ISO_DIR/boot/vmlinuz"
+    fi
+    
     cp "$ROOTFS/boot/initramfs-live.img" "$ISO_DIR/boot/initramfs.img"
+    
+    # Verify files copied
+    if [ ! -f "$ISO_DIR/boot/vmlinuz" ]; then
+        error "Kernel not found in $ROOTFS/boot/"
+    fi
+    if [ ! -f "$ISO_DIR/boot/initramfs.img" ]; then
+        error "Initramfs not found"
+    fi
     
     mkdir -p "$ISO_DIR/isolinux"
     cat > "$ISO_DIR/isolinux/isolinux.cfg" <<EOF
