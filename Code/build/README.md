@@ -1,229 +1,351 @@
 # ArborOS Build System
 
-Build ArborOS ISO from Windows without VirtualBox.
+Build ArborOS Phase 5 ISO with LXQt desktop environment.
 
-## Quick Start (Windows)
+## Quick Start
 
-**1. Install Docker Desktop**
-- Download: https://www.docker.com/products/docker-desktop/
-- Install and enable WSL2
-- Start Docker Desktop
+### Windows
 
-**2. Build ISO**
+**Requirements:**
+- Docker Desktop installed and running
+- 4GB RAM free
+- 10GB disk space
 
-**Option A: Double-click (Easiest)**
+**Build:**
+```cmd
+# Double-click this file:
+Code\build\build-phase5.bat
+
+# Or run in PowerShell:
+cd Code\build
+.\build-phase5.ps1
 ```
-Code/build/build-docker.bat
-```
-Double-click file, wait 15-30 min, get `ArborOS-phase3.iso`
 
-**Option B: Git Bash / WSL**
+**Time:** 30-45 minutes
+
+### Linux (Ubuntu/Debian)
+
+**Requirements:**
+- Docker installed
+- Root access
+
+**Install Docker (if needed):**
+```bash
+sudo apt update
+sudo apt install docker.io -y
+sudo systemctl start docker
+sudo systemctl enable docker
+```
+
+**Build:**
 ```bash
 cd Code/build
-bash build-docker.sh
+chmod +x build-ubuntu.sh
+sudo bash build-ubuntu.sh
 ```
 
-**3. Test ISO**
-- VirtualBox > New VM
-- Load `ArborOS-phase3.iso`
-- RAM: 2GB+
-- Boot and test
+**Time:** 30-45 minutes
 
-## Build Methods Comparison
+### Linux (Fedora/RHEL/CentOS)
 
-| Method | Speed | Disk | Setup | Best For |
-|--------|-------|------|-------|----------|
-| **Docker** (NEW) | ⚡ Fast | Low (temp) | Easy | **Development** |
-| VirtualBox | 🐌 Slow | High (VM) | Complex | One-time |
-| Native Linux | ⚡ Fast | Medium | Manual | Production |
+**Requirements:**
+- DNF package manager
+- Root access
+- Build tools installed
 
-**Docker Wins:**
-- ✅ Build directly from Windows
-- ✅ No VM disk space issues
-- ✅ Faster (no VM overhead)
-- ✅ Auto-cleanup (temp files deleted)
-- ✅ One command to build
-- ✅ Great for design iteration (theme, apps, etc)
+**Install dependencies:**
+```bash
+sudo dnf install -y genisoimage syslinux squashfs-tools \
+    dracut-live e2fsprogs pciutils usbutils lshw dmidecode
+```
 
-## Build Time
+**Build:**
+```bash
+cd Code/build
+chmod +x create_iso.sh
+sudo bash create_iso.sh
+```
 
-**Phases:**
-1. Download Fedora packages: 3-5 min
-2. Install packages: 3-10 min
-3. Create initramfs: 1-2 min
-4. Build squashfs: 5-10 min
-5. Create ISO: 1-2 min
+**Time:** 30-45 minutes
 
-**Total: 15-30 minutes**
-(varies by internet speed and CPU)
+### macOS
+
+**Requirements:**
+- Docker Desktop installed and running
+
+**Build:**
+```bash
+cd Code/build
+chmod +x build-ubuntu.sh
+sudo bash build-ubuntu.sh
+```
+
+**Time:** 30-45 minutes
 
 ## Output
 
+All build methods create:
 ```
-ArborOS/
-└── ArborOS-phase3.iso    # 800-900 MB
+Code/build/output/ArborOS-0.5.iso
 ```
 
-ISO contains:
-- Fedora 39 base
-- Hardware support (GPU, audio, WiFi)
-- arbor-hwinfo tool
-- Live boot system
+**Size:** ~1.2-1.5 GB  
+**Format:** Hybrid ISO (boots USB and CD)
 
-## Requirements
+## What's Included
+
+**ArborOS Phase 5 (v0.5):**
+- Fedora 39 base system
+- LXQt lightweight desktop environment
+- Full hardware support (GPU, WiFi, Audio, Bluetooth)
+- NetworkManager for networking
+- LightDM display manager with autologin
+- Basic applications (terminal, file manager, text editor)
+- Live boot support
+
+**Default credentials:**
+- Username: `arbor`
+- Password: `arbor`
+
+## Testing the ISO
+
+### VirtualBox
+
+```bash
+# Create new VM
+Name: ArborOS Test
+Type: Linux
+Version: Fedora (64-bit)
+RAM: 2048 MB (minimum)
+Disk: Skip (live ISO)
+
+# Settings
+Storage > Controller IDE > Add ArborOS-0.5.iso
+System > Boot Order > Optical first
+Display > Video Memory > 128 MB
+
+# Start VM
+```
+
+### Physical Hardware (USB)
+
+**Linux:**
+```bash
+# Find USB device
+lsblk
+
+# Write ISO (replace sdX with your device)
+sudo dd if=Code/build/output/ArborOS-0.5.iso of=/dev/sdX bs=4M status=progress
+sync
+```
 
 **Windows:**
-- Docker Desktop (with WSL2)
-- 4GB RAM free
-- 10GB disk space (temp)
+- Use Rufus, Etcher, or similar tool
+- Write ArborOS-0.5.iso to USB drive
+- Boot from USB
 
-**Linux (alternative):**
-- Fedora/RHEL/CentOS
-- Root access
-- `dnf`, `mkisofs`, `squashfs-tools`
+### QEMU
 
-## Customization
-
-**For Phase 5+ (Desktop, Theme):**
-
-1. Edit packages in build script
-2. Add theme files to `Code/configs/`
-3. Rebuild with Docker (fast iteration)
-4. Test changes immediately
-
-**Example: Add package**
 ```bash
-# Edit build-docker.sh
-# Add to package list:
-dnf install ... \
+qemu-system-x86_64 -m 2G -cdrom Code/build/output/ArborOS-0.5.iso
+```
+
+## Build Methods Comparison
+
+| Method | Platform | Speed | Complexity |
+|--------|----------|-------|------------|
+| **build-phase5.bat** | Windows | Fast | Easy |
+| **build-phase5.ps1** | Windows/Linux | Fast | Easy |
+| **build-ubuntu.sh** | Ubuntu/Debian/macOS | Fast | Easy |
+| **create_iso.sh** | Fedora/RHEL | Fastest | Medium |
+
+**Recommended:**
+- Windows → `build-phase5.bat` (double-click)
+- Ubuntu/Debian → `build-ubuntu.sh`
+- Fedora/RHEL → `create_iso.sh` (native, fastest)
+- macOS → `build-ubuntu.sh`
+
+## Build Process Details
+
+**Steps:**
+1. **[1/9]** Install build tools
+2. **[2/9]** Bootstrap Fedora base system (~300 packages)
+3. **[3/9]** Install desktop and hardware packages (~400 packages)
+4. **[4/9]** Configure system (users, hostname, services)
+5. **[5/9]** Build initramfs with live boot support
+6. **[6/9]** Copy kernel and initramfs to ISO structure
+7. **[7/9]** Create squashfs compressed filesystem
+8. **[8/9]** Configure bootloader (isolinux)
+9. **[9/9]** Build final ISO image
+
+**Disk usage during build:**
+- Temporary: ~8 GB (auto-cleaned)
+- Final ISO: ~1.2-1.5 GB
+
+## Troubleshooting
+
+### Docker not starting
+
+**Windows:**
+```
+Error: Cannot connect to Docker daemon
+Fix: Start Docker Desktop, wait for green icon in system tray
+```
+
+**Linux:**
+```bash
+# Check Docker service
+sudo systemctl status docker
+
+# Start Docker
+sudo systemctl start docker
+```
+
+### Build fails - disk space
+
+```
+Error: No space left on device
+Fix: Free up 10GB+ disk space
+Check: df -h
+```
+
+### ISO won't boot
+
+**Check:**
+- VirtualBox: Optical drive first in boot order
+- USB: Use proper flashing tool (Rufus, dd)
+- UEFI: Some systems need Legacy/BIOS mode
+
+**Verify ISO integrity:**
+```bash
+# Check file size (should be 1.2-1.5 GB)
+ls -lh Code/build/output/ArborOS-0.5.iso
+
+# Test with QEMU
+qemu-system-x86_64 -m 2G -cdrom Code/build/output/ArborOS-0.5.iso
+```
+
+### Permission denied (Linux)
+
+```bash
+# Run build with sudo
+sudo bash build-ubuntu.sh
+
+# Or add user to docker group
+sudo usermod -aG docker $USER
+# Logout and login again
+```
+
+### Windows line ending issues
+
+**If you see `$'\r': command not found`:**
+```bash
+# Convert script to Unix line endings
+dos2unix build-ubuntu.sh
+
+# Or reinstall dos2unix
+sudo apt install dos2unix
+```
+
+## Advanced Usage
+
+### Custom packages
+
+**Edit build script before running:**
+
+For `create_iso.sh`, add packages in `create_rootfs()` function:
+```bash
+dnf --installroot="$ROOTFS" ... install \
     your-package-name \
     another-package
 ```
 
-**Example: Add theme**
+For `build-ubuntu.sh` or `.bat`/`.ps1`, add to package list in Docker command.
+
+### Custom configuration
+
+**Add files to ISO:**
 ```bash
-# In build script, after system config:
-cp -r /workspace/Code/configs/theme/* \
-    /tmp/build/work/rootfs/usr/share/themes/
+# After configure_system() in create_iso.sh
+cp /path/to/your/config "$ROOTFS/etc/your-config"
 ```
 
-## Troubleshooting
+### Rebuild without cache
 
-**Docker not starting:**
-```
-Error: Cannot connect to Docker daemon
-Fix: Start Docker Desktop, wait for green icon
-```
-
-**Build fails - disk space:**
-```
-Error: No space left
-Fix: Docker uses temp space, auto-cleans after build
-Check: Docker Desktop > Settings > Resources > Disk
-```
-
-**ISO not booting:**
-```
-Check: VirtualBox settings
-- RAM: 2GB minimum
-- Boot order: Optical first
-- UEFI: Disabled (use BIOS)
-```
-
-**Permission denied (Windows):**
-```
-Error: Permission denied accessing /workspace
-Fix: Docker Desktop > Settings > Resources > File Sharing
-Add: C:\Users\YourName\... to shared paths
-```
-
-## Advanced
-
-**Build in background:**
+**Docker methods:**
 ```bash
-# Git Bash / WSL
-nohup bash build-docker.sh > build.log 2>&1 &
-tail -f build.log
+# Clear Docker cache
+docker system prune -af
+
+# Rebuild
+bash build-ubuntu.sh
 ```
 
-**Custom ISO name:**
+**Native Fedora:**
 ```bash
-# Edit build-docker.sh
-# Change output filename:
-cp /tmp/ArborOS-phase3.iso /workspace/ArborOS-custom.iso
+# Clean previous build
+sudo rm -rf Code/build/work Code/build/iso
+sudo bash create_iso.sh
 ```
 
-**Debug build:**
-```bash
-# Enter container interactively
-docker run --rm -it --privileged \
-    -v "$(pwd)/../..:/workspace" \
-    fedora:39 bash
+## Contributing
 
-# Run commands manually
-cd /tmp
-dnf install genisoimage ...
-# etc
-```
+Found an issue with the build system? Open an issue or PR at:
+https://github.com/MuftiFaris/ArborOS/issues
 
-## Files
+## Build Files
 
 ```
 Code/build/
-├── build-docker.bat       # Windows: Double-click to build
-├── build-docker.sh        # Linux/WSL: Bash script
-├── create_iso.sh          # Legacy: VirtualBox method
-└── README.md              # This file
+├── build-phase5.bat       # Windows: Double-click build
+├── build-phase5.ps1       # PowerShell: Windows/Linux
+├── build-ubuntu.sh        # Ubuntu/Debian/macOS via Docker
+├── create_iso.sh          # Fedora/RHEL native build
+├── README.md              # This file
+└── output/
+    └── ArborOS-0.5.iso    # Build output (not in git)
 ```
 
-## Why Docker?
+## System Requirements
 
-**Before (VirtualBox):**
-```
-1. Start Ubuntu VM
-2. Login
-3. Run build script
-4. Wait 30+ min
-5. Copy ISO to Windows
-6. Shutdown VM
-Total: 40+ min + VM disk space
-```
+**Build machine:**
+- 4GB RAM minimum
+- 10GB free disk space
+- Internet connection (downloads ~2GB packages)
 
-**After (Docker):**
-```
-1. Double-click .bat
-2. Wait 15-30 min
-3. ISO ready in same folder
-Total: 15-30 min, no VM needed
-```
+**Target system (for running ISO):**
+- 2GB RAM minimum (4GB recommended)
+- 64-bit x86 processor
+- 10GB+ disk space (for installation)
+- VirtualBox 6.0+ or physical hardware
 
-**For design work (Phase 5+):**
-- Change theme files
-- Rebuild in Docker (15 min)
-- Test immediately
-- Iterate fast
+## Development Workflow
 
-No more VirtualBox slowness.
+**Fast iteration for development:**
+
+1. Make changes to config/theme files
+2. Rebuild with Docker method (30-45 min)
+3. Test in VirtualBox
+4. Iterate
+
+**Docker caches package downloads, speeding up rebuilds.**
 
 ## Next Steps
 
-**Phase 5 - Desktop Environment:**
-- Edit `build-docker.sh`
-- Add GNOME/Plasma/Xfce packages
-- Add theme/wallpaper files
-- Rebuild and test
-- Fast iteration cycle
+**After building ISO:**
 
-**Phase 6 - Applications:**
-- Add app packages to script
-- Configure app defaults
-- Rebuild
-- Test UX
+1. Test in VirtualBox
+2. Verify desktop loads (LXQt)
+3. Check RAM usage: `free -h` (target <500MB idle)
+4. Test hardware detection: `sudo arbor-hwinfo`
+5. Test network: `ping google.com`
 
-Docker makes development workflow smooth.
+**Phase 6:** Core applications (browser, office, etc)
 
 ---
 
-**Current Phase:** 3 (Hardware Support)  
-**Build Method:** Docker (recommended)  
-**ISO Version:** 0.2 / phase3
+**Current Phase:** Phase 5 - Desktop Environment  
+**ISO Version:** 0.5  
+**Base:** Fedora 39  
+**Desktop:** LXQt  
+**Build Status:** Working
