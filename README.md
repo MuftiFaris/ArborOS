@@ -120,18 +120,26 @@ See detailed documentation in `Documentation/07-Implementation/Phase Plan/`
 
 **Building ISO:**
 
-**Windows:**
-```powershell
-cd Code\build
-.\build-final.ps1
-```
-
-**Linux:**
+**Ubuntu/Debian VM (Recommended - Working):**
 ```bash
 cd Code/build
-chmod +x build-final.sh
-sudo bash build-final.sh
+chmod +x build-ubuntu.sh
+sudo bash build-ubuntu.sh
 ```
+- Uses Docker (Ubuntu/Fedora compatible)
+- Builds in ~30-45 minutes
+- Output: `Code/build/output/ArborOS-0.5.iso`
+- **Status:** ✅ Tested & working
+
+**Alternative: Fedora (Native)**
+```bash
+cd Code/build
+chmod +x create_iso.sh
+sudo bash create_iso.sh
+```
+- Native Fedora build (no Docker needed)
+- Output: `Code/build/output/ArborOS-0.5.iso`
+- **Status:** ⚠️ Available, not tested
 
 Full documentation: `Code/build/README.md`
 

@@ -37,9 +37,13 @@ echo "[2/9] Bootstrapping Fedora (300+ packages, ~5 min)..."
 dnf --installroot=/tmp/build/work/rootfs --releasever=39 --setopt=install_weak_deps=False --setopt=cachedir=/tmp/dnf-cache --nodocs -y -q groupinstall "Minimal Install"
 
 echo "[3/9] Installing desktop packages (400+ packages, ~10 min)..."
-dnf --installroot=/tmp/build/work/rootfs --releasever=39 --setopt=cachedir=/tmp/dnf-cache -y -q install kernel systemd NetworkManager openssh-server sudo nano bash-completion dracut-live dracut-network linux-firmware mesa-dri-drivers pipewire wireplumber alsa-utils lxqt-panel lxqt-session lxqt-config openbox pcmanfm-qt qterminal featherpad lightdm lightdm-gtk lightdm-gtk-greeter-settings network-manager-applet breeze-icon-theme xorg-x11-server-Xorg xorg-x11-xinit
+dnf --installroot=/tmp/build/work/rootfs --releasever=39 --setopt=cachedir=/tmp/dnf-cache -y -q install kernel systemd NetworkManager openssh-server sudo nano bash-completion dracut-live dracut-network linux-firmware mesa-dri-drivers pipewire wireplumber alsa-utils lxqt-panel lxqt-session lxqt-config openbox pcmanfm-qt qterminal featherpad lightdm lightdm-gtk lightdm-gtk-greeter-settings network-manager-applet breeze-icon-theme xorg-x11-server-Xorg xorg-x11-xinit htop wget curl git
 
 echo "[4/9] Configuring system..."
+mount -t proc /proc /tmp/build/work/rootfs/proc
+mount -t sysfs /sys /tmp/build/work/rootfs/sys
+mount --bind /dev /tmp/build/work/rootfs/dev
+mount --bind /dev/pts /tmp/build/work/rootfs/dev/pts
 echo arbor-os > /tmp/build/work/rootfs/etc/hostname
 chroot /tmp/build/work/rootfs useradd -m -G wheel -s /bin/bash arbor 2>/dev/null || true
 chroot /tmp/build/work/rootfs bash -c "echo arbor:arbor | chpasswd"
@@ -54,11 +58,18 @@ printf "[Seat:*]\nautologin-user=arbor\nautologin-user-timeout=0\n" > /tmp/build
 if [ -f /workspace/Code/system/hardware-detection.sh ]; then
     cp /workspace/Code/system/hardware-detection.sh /tmp/build/work/rootfs/usr/local/bin/arbor-hwinfo
     chmod +x /tmp/build/work/rootfs/usr/local/bin/arbor-hwinfo
+    echo "Hardware detection script installed"
+else
+    echo "Warning: hardware-detection.sh not found"
 fi
 
 echo "[5/9] Building initramfs (~2 min)..."
 KVER=$(ls /tmp/build/work/rootfs/lib/modules | head -n1)
 chroot /tmp/build/work/rootfs dracut --force --no-hostonly --add "dmsquash-live livenet" --omit plymouth /boot/initramfs-live.img $KVER 2>&1 | grep -v "dracut: Executing" || true
+umount -l /tmp/build/work/rootfs/proc || true
+umount -l /tmp/build/work/rootfs/sys || true
+umount -l /tmp/build/work/rootfs/dev/pts || true
+umount -l /tmp/build/work/rootfs/dev || true
 
 echo "[6/9] Copying kernel..."
 mkdir -p /tmp/build/iso/boot
