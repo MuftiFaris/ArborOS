@@ -66,7 +66,6 @@ ArborOS/
   - ✅ Task #9: Accessibility (WCAG 2.1 AA framework)
   - ✅ Task #10: Localization (7 languages, 450+ strings)
   - ✅ Task #11: Flatpak packaging (6 manifests, KDE Platform 5.15)
-- 📋 **Phase 6.1** - D-Bus Integration, PTY Support, Translation Completion
 - 📋 **Phase 7** - Privacy & User Control
 - 📋 **Phase 8** - Update & Recovery
 - 📋 **Phase 9** - Performance Optimization
