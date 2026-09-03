@@ -1,0 +1,17 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Arbor Files
+Comment=Lightweight file manager with tagging and preview
+Exec=arbor-files %F
+Icon=arbor-files
+Categories=System;Utility;FileManager;
+Keywords=folder;manager;explorer;file;
+Terminal=false
+StartupNotify=true
+MimeType=inode/directory;
+
+# Arbor-specific metadata
+X-Arbor-Version=1.0
+X-Arbor-Category=System
+X-Arbor-Tier=Essential

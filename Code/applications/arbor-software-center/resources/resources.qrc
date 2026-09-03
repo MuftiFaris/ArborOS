@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RCC>
+    <qresource prefix="/">
+        <file>icons/app-store.svg</file>
+        <file>icons/install.svg</file>
+        <file>icons/uninstall.svg</file>
+        <file>icons/update.svg</file>
+        <file>icons/search.svg</file>
+        <file>icons/files.svg</file>
+        <file>icons/text-editor.svg</file>
+        <file>icons/gimp.svg</file>
+        <file>icons/spotify.svg</file>
+        <file>icons/chrome.svg</file>
+        <file>icons/firefox.svg</file>
+        <file>icons/libreoffice.svg</file>
+        <file>icons/steam.svg</file>
+    </qresource>
+</RCC>

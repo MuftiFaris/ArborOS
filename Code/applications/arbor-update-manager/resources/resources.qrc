@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RCC>
+    <qresource prefix="/">
+        <file>icons/update.svg</file>
+        <file>icons/check.svg</file>
+        <file>icons/download.svg</file>
+        <file>icons/install.svg</file>
+        <file>icons/schedule.svg</file>
+    </qresource>
+</RCC>

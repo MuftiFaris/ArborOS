@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Arbor Software Center
+Comment=Install and manage applications
+Icon=application-x-addon
+Exec=arbor-software-center
+Categories=System;Utility;
+
+# Arbor specific metadata
+X-Arbor-Layer=System
+X-Arbor-Priority=10
+X-Arbor-RequiresNetwork=true
+
+# Accessibility
+X-Arbor-Accessible=true
+X-Arbor-HelpURL=https://arboros.dev/help/software-center

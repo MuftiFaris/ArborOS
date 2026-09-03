@@ -1,0 +1,54 @@
+{
+  "app-id": "org.arboros.Settings",
+  "runtime": "org.kde.Platform",
+  "runtime-version": "5.15",
+  "sdk": "org.kde.Sdk",
+  "command": "arbor-settings",
+  "rename-icon": "arbor-settings",
+  "copy-icon": true,
+  "finish-args": [
+    "--share=ipc",
+    "--socket=x11",
+    "--socket=wayland",
+    "--device=dri",
+    "--system-talk-name=org.freedesktop.NetworkManager",
+    "--system-talk-name=org.freedesktop.UDisks2",
+    "--system-talk-name=org.freedesktop.timedate1",
+    "--system-talk-name=org.freedesktop.login1",
+    "--talk-name=org.gnome.SettingsDaemon.Power",
+    "--talk-name=org.gnome.SettingsDaemon.Color"
+  ],
+  "cleanup": [
+    "/include",
+    "/lib/pkgconfig",
+    "*.a"
+  ],
+  "modules": [
+    {
+      "name": "arbor-design-system",
+      "buildsystem": "cmake",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "../../design-system"
+        }
+      ]
+    },
+    {
+      "name": "arbor-settings",
+      "buildsystem": "cmake",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": ".."
+        }
+      ]
+    }
+  ]
+}

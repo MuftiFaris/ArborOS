@@ -1,0 +1,50 @@
+{
+  "app-id": "org.arboros.Terminal",
+  "runtime": "org.kde.Platform",
+  "runtime-version": "5.15",
+  "sdk": "org.kde.Sdk",
+  "command": "arbor-terminal",
+  "rename-icon": "arbor-terminal",
+  "copy-icon": true,
+  "finish-args": [
+    "--share=ipc",
+    "--socket=x11",
+    "--socket=wayland",
+    "--device=dri",
+    "--share=network",
+    "--filesystem=home"
+  ],
+  "cleanup": [
+    "/include",
+    "/lib/pkgconfig",
+    "*.a"
+  ],
+  "modules": [
+    {
+      "name": "arbor-design-system",
+      "buildsystem": "cmake",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "../../design-system"
+        }
+      ]
+    },
+    {
+      "name": "arbor-terminal",
+      "buildsystem": "cmake",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": ".."
+        }
+      ]
+    }
+  ]
+}

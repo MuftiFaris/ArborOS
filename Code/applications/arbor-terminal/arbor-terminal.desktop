@@ -1,0 +1,16 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Arbor Terminal
+Comment=Modern terminal emulator with tabs and splits
+Exec=arbor-terminal
+Icon=arbor-terminal
+Categories=System;Utility;TerminalEmulator;
+Keywords=shell;bash;terminal;console;
+Terminal=false
+StartupNotify=true
+
+# Arbor-specific metadata
+X-Arbor-Version=1.0
+X-Arbor-Category=System
+X-Arbor-Tier=Essential
