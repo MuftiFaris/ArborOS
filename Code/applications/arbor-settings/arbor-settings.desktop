@@ -1,0 +1,16 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Arbor Settings
+Comment=System settings and control center
+Exec=arbor-settings
+Icon=arbor-settings
+Categories=System;Settings;
+Keywords=settings;preferences;configuration;control;
+Terminal=false
+StartupNotify=true
+
+# Arbor-specific metadata
+X-Arbor-Version=1.0
+X-Arbor-Category=System
+X-Arbor-Tier=Essential
