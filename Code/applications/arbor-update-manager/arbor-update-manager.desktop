@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Arbor Update Manager
+Comment=Manage system updates
+Icon=system-software-update
+Exec=arbor-update-manager
+Categories=System;Settings;
+
+# Arbor specific metadata
+X-Arbor-Layer=System
+X-Arbor-Priority=9
+X-Arbor-RequiresNetwork=true
+
+# Accessibility
+X-Arbor-Accessible=true
+X-Arbor-HelpURL=https://arboros.dev/help/update-manager
