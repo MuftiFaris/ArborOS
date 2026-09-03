@@ -1,0 +1,50 @@
+{
+  "app-id": "org.arboros.SystemMonitor",
+  "runtime": "org.kde.Platform",
+  "runtime-version": "5.15",
+  "sdk": "org.kde.Sdk",
+  "command": "arbor-system-monitor",
+  "rename-icon": "arbor-system-monitor",
+  "copy-icon": true,
+  "finish-args": [
+    "--share=ipc",
+    "--socket=x11",
+    "--socket=wayland",
+    "--device=dri",
+    "--share=network",
+    "--filesystem=host-os"
+  ],
+  "cleanup": [
+    "/include",
+    "/lib/pkgconfig",
+    "*.a"
+  ],
+  "modules": [
+    {
+      "name": "arbor-design-system",
+      "buildsystem": "cmake",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "../../design-system"
+        }
+      ]
+    },
+    {
+      "name": "arbor-system-monitor",
+      "buildsystem": "cmake",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": ".."
+        }
+      ]
+    }
+  ]
+}

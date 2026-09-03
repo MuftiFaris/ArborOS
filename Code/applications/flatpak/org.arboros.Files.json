@@ -1,0 +1,52 @@
+{
+  "app-id": "org.arboros.Files",
+  "runtime": "org.kde.Platform",
+  "runtime-version": "5.15",
+  "sdk": "org.kde.Sdk",
+  "command": "arbor-files",
+  "rename-icon": "arbor-files",
+  "copy-icon": true,
+  "finish-args": [
+    "--share=ipc",
+    "--socket=x11",
+    "--socket=wayland",
+    "--device=dri",
+    "--share=network",
+    "--filesystem=home",
+    "--filesystem=/mnt",
+    "--filesystem=/media"
+  ],
+  "cleanup": [
+    "/include",
+    "/lib/pkgconfig",
+    "*.a"
+  ],
+  "modules": [
+    {
+      "name": "arbor-design-system",
+      "buildsystem": "cmake",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": "../../design-system"
+        }
+      ]
+    },
+    {
+      "name": "arbor-files",
+      "buildsystem": "cmake",
+      "config-opts": [
+        "-DCMAKE_BUILD_TYPE=Release"
+      ],
+      "sources": [
+        {
+          "type": "dir",
+          "path": ".."
+        }
+      ]
+    }
+  ]
+}
