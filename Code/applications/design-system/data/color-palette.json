@@ -1,0 +1,233 @@
+{
+  "metadata": {
+    "name": "Arbor OS Design System",
+    "version": "1.0",
+    "author": "Arbor OS Team",
+    "description": "Unified color palette for ArborOS applications",
+    "created": "2026-09-02"
+  },
+  "themes": {
+    "dark": {
+      "name": "Dark Theme",
+      "base": {
+        "surfaceBase": {
+          "hex": "#0F1215",
+          "rgb": "rgb(15, 18, 21)",
+          "description": "Primary background color - deep slate"
+        },
+        "surfaceElev1": {
+          "hex": "#161B22",
+          "rgb": "rgb(22, 27, 34)",
+          "description": "Elevated surface - panels, sidebars"
+        },
+        "surfaceElev2": {
+          "hex": "#21262D",
+          "rgb": "rgb(33, 38, 45)",
+          "description": "Card background - further elevated"
+        }
+      },
+      "text": {
+        "primary": {
+          "hex": "#F0F6FC",
+          "rgb": "rgb(240, 246, 252)",
+          "description": "Primary text color - light text"
+        },
+        "muted": {
+          "hex": "#8B949E",
+          "rgb": "rgb(139, 148, 158)",
+          "description": "Secondary text color - muted gray"
+        }
+      },
+      "accent": {
+        "primary": {
+          "hex": "#2DD4BF",
+          "rgb": "rgb(45, 212, 191)",
+          "description": "Primary accent - Arbor Teal"
+        },
+        "hover": {
+          "hex": "#5EEAD4",
+          "rgb": "rgb(94, 234, 212)",
+          "description": "Accent hover state - teal light"
+        }
+      },
+      "border": {
+        "neutral": {
+          "hex": "rgba(255, 255, 255, 0.08)",
+          "description": "Subtle border color - 8% white opacity"
+        }
+      },
+      "semantic": {
+        "success": {
+          "hex": "#3FB950",
+          "rgb": "rgb(63, 185, 80)",
+          "description": "Success state - green"
+        },
+        "warning": {
+          "hex": "#F0883E",
+          "rgb": "rgb(240, 136, 62)",
+          "description": "Warning state - orange"
+        },
+        "danger": {
+          "hex": "#F85149",
+          "rgb": "rgb(248, 81, 73)",
+          "description": "Error/destructive state - red"
+        }
+      }
+    },
+    "light": {
+      "name": "Light Theme",
+      "base": {
+        "surfaceBase": {
+          "hex": "#F6F8FA",
+          "rgb": "rgb(246, 248, 250)",
+          "description": "Primary background color - off white"
+        },
+        "surfaceElev1": {
+          "hex": "#FFFFFF",
+          "rgb": "rgb(255, 255, 255)",
+          "description": "Elevated surface - white"
+        },
+        "surfaceElev2": {
+          "hex": "#EEF2F6",
+          "rgb": "rgb(238, 242, 246)",
+          "description": "Card background - light gray"
+        }
+      },
+      "text": {
+        "primary": {
+          "hex": "#1F2328",
+          "rgb": "rgb(31, 35, 40)",
+          "description": "Primary text color - dark text"
+        },
+        "muted": {
+          "hex": "#67707E",
+          "rgb": "rgb(103, 112, 126)",
+          "description": "Secondary text color - gray"
+        }
+      },
+      "accent": {
+        "primary": {
+          "hex": "#0D9488",
+          "rgb": "rgb(13, 148, 136)",
+          "description": "Primary accent - teal dark"
+        },
+        "hover": {
+          "hex": "#14B8A6",
+          "rgb": "rgb(20, 184, 166)",
+          "description": "Accent hover state - teal medium"
+        }
+      },
+      "border": {
+        "neutral": {
+          "hex": "rgba(0, 0, 0, 0.08)",
+          "description": "Subtle border color - 8% black opacity"
+        }
+      },
+      "semantic": {
+        "success": {
+          "hex": "#3FB950",
+          "rgb": "rgb(63, 185, 80)",
+          "description": "Success state - green"
+        },
+        "warning": {
+          "hex": "#F0883E",
+          "rgb": "rgb(240, 136, 62)",
+          "description": "Warning state - orange"
+        },
+        "danger": {
+          "hex": "#F85149",
+          "rgb": "rgb(248, 81, 73)",
+          "description": "Error/destructive state - red"
+        }
+      }
+    }
+  },
+  "typography": {
+    "fontFamilies": {
+      "primary": "Inter",
+      "display": "Inter Display",
+      "monospace": "JetBrains Mono"
+    },
+    "scales": {
+      "displayL": {
+        "fontSize": 36,
+        "fontWeight": 600,
+        "lineHeight": 44,
+        "letterSpacing": "-0.02em"
+      },
+      "heading1": {
+        "fontSize": 24,
+        "fontWeight": 600,
+        "lineHeight": 32,
+        "letterSpacing": "-0.01em"
+      },
+      "heading2": {
+        "fontSize": 18,
+        "fontWeight": 500,
+        "lineHeight": 24,
+        "letterSpacing": "0em"
+      },
+      "body": {
+        "fontSize": 14,
+        "fontWeight": 400,
+        "lineHeight": 20,
+        "letterSpacing": "0em"
+      },
+      "caption": {
+        "fontSize": 12,
+        "fontWeight": 400,
+        "lineHeight": 16,
+        "letterSpacing": "+0.01em"
+      },
+      "code": {
+        "fontSize": 13,
+        "fontWeight": 400,
+        "lineHeight": 18,
+        "letterSpacing": "0em"
+      }
+    }
+  },
+  "spacing": {
+    "xs": 4,
+    "sm": 8,
+    "md": 12,
+    "lg": 16,
+    "xl": 24,
+    "2xl": 32,
+    "unit": "px",
+    "description": "8px baseline grid system"
+  },
+  "borderRadius": {
+    "sm": 4,
+    "md": 8,
+    "lg": 12,
+    "squircle": 22,
+    "unit": "px"
+  },
+  "shadows": {
+    "sm": "0px 2px 4px rgba(0, 0, 0, 0.1)",
+    "md": "0px 4px 12px rgba(0, 0, 0, 0.15)",
+    "lg": "0px 12px 24px rgba(0, 0, 0, 0.2)"
+  },
+  "animation": {
+    "timing": {
+      "instant": 0,
+      "short": 100,
+      "normal": 200,
+      "long": 400,
+      "unit": "ms"
+    },
+    "springPhysics": {
+      "stiffness": 300,
+      "damping": 30,
+      "description": "Smooth spring curve for transitions"
+    }
+  },
+  "focus": {
+    "ringWidth": 2,
+    "ringColorDark": "#2DD4BF",
+    "ringColorLight": "#0D9488",
+    "offset": 2,
+    "description": "Keyboard focus indicator styling"
+  }
+}
