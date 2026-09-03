@@ -1,0 +1,16 @@
+[Desktop Entry]
+Type=Application
+Name=Arbor System Monitor
+Comment=Monitor system performance
+Icon=utilities-system-monitor
+Exec=arbor-system-monitor
+Categories=System;Utility;
+
+# Arbor specific metadata
+X-Arbor-Layer=System
+X-Arbor-Priority=8
+X-Arbor-RequiresNetwork=false
+
+# Accessibility
+X-Arbor-Accessible=true
+X-Arbor-HelpURL=https://arboros.dev/help/system-monitor

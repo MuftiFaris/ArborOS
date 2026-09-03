@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<RCC>
+    <qresource prefix="/">
+        <file>icons/monitor.svg</file>
+        <file>icons/cpu.svg</file>
+        <file>icons/memory.svg</file>
+        <file>icons/network.svg</file>
+        <file>icons/process.svg</file>
+    </qresource>
+</RCC>
