@@ -275,6 +275,8 @@ void PrivacyManager::allowAllPermissionsForApp(const QString& appId)
 
 void PrivacyManager::resetPermissionsForApp(const QString& appId)
 {
+    QMutexLocker locker(&m_policyMutex);  // CRITICAL: Protect m_policies access
+    
     m_settings->beginGroup("Permissions");
     m_settings->remove(appId);
     m_settings->endGroup();
