@@ -52,7 +52,7 @@ ArborOS/
 - ✅ **Phase 1** - Repository Foundation  
 - ✅ **Phase 2** - Base Linux System (Bootable, Network, 315MB RAM)
 - ✅ **Phase 3** - Hardware Support (GPU, Audio, WiFi firmware, Power management)
-- ✅ **Phase 4** - Installer (Calamares Configs, Module Specs & Build Pipeline Integrated)
+- ⚠️ **Phase 4** - Installer (Calamares Configs & Branding Complete, Live ISO Package Build Pending)
 - ✅ **Phase 5** - Desktop Environment (LXQt, 400MB RAM, Working)
 - ✅ **Phase 6** - Core Applications (ALL COMPLETE: 11 tasks, 8,736 lines, flawless)
 - ✅ **Phase 7** - Privacy & User Control (ALL COMPLETE: 8 tasks, PrivacyManager, Dashboard, UI, Audited)
@@ -90,30 +90,19 @@ ArborOS/
 - Breeze icon theme
 
 **Phase 4 Status:**
-- ✅ Calamares installer configs & branding complete
+- ⚠️ Calamares installer configs & branding complete; installer binary package pending RPM Fusion/custom build integration
 - ✅ GUI & Desktop Environment runtime dependencies resolved in Phase 5 & 6
 
 **Known Limitations:**
-- Manual installation required (installer coming in Phase 6+)
-- Limited applications (browser, office coming in Phase 6)
-- Fedora branding visible (ArborOS branding in Phase 7)
+- GUI Installer package integration pending (Calamares package build deferred; live boot ISO available).
+- Third-party web browser & office suite integration coming in future updates.
 
-**Phase 6 Applications (Development Branch):**
-- 6 core applications implemented (Files, Terminal, Settings, Software Center, Update Manager, System Monitor)
-- Unified design system with semantic colors and typography
-- WCAG 2.1 AA accessibility framework
-- Localization support for 7 languages (en, de, fr, es, ja, zh, ru)
-- Flatpak manifests with permission matrix
-- Build system: Qt6 + CMake
-- Status: All code verified, zero compilation errors, ready for testing
-
-**Phase 6 Documentation:**
-- `Code/applications/PHASE_6_COMPLETION_REPORT.md` - Complete implementation details
-- `Code/applications/FINAL_AUDIT_REPORT.md` - Flawless verification report
-- `Code/applications/ACCESSIBILITY_CHECKLIST.md` - WCAG 2.1 AA compliance matrix
-- `Code/applications/FLATPAK_DEPLOYMENT_GUIDE.md` - Build and distribution guide
-
-See detailed documentation in `Documentation/07-Implementation/Phase Plan/`
+**Phase 6 & Phase 7 Documentation:**
+- `Code/applications/PHASE_6_COMPLETION_REPORT.md` - Phase 6 Core Applications report
+- `Code/applications/FINAL_AUDIT_REPORT.md` - Phase 6 Audit report
+- `Code/privacy/PRIVACY_USER_GUIDE.md` - Phase 7 Privacy framework user guide
+- `Code/privacy/PRIVACY_BEST_PRACTICES.md` - Phase 7 Security best practices
+- `Documentation/07-Implementation/Phase Plan/` - Comprehensive phase-by-phase documentation
 
 ## Quick Start
 
@@ -206,23 +195,18 @@ For questions or discussion, open an issue.
 
 ---
 
-## Phase 6 Quickstart (Development Branch)
+## Phase 6 & 7 Quickstart
 
-**Branch:** `feature/desktop-environment` (16 commits, ready for merge to main)
+To build and test **Phase 6 Core Applications** and **Phase 7 Privacy Subsystem & Dashboard**:
 
-To test Phase 6 core applications:
-
+### Building Phase 6 Core Applications
 ```bash
-# Checkout Phase 6 branch
-git checkout feature/desktop-environment
-
-# Build Phase 6 applications
 cd Code/applications
 mkdir build && cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
 cmake --build . -j$(nproc)
 
-# Run individual apps
+# Run apps:
 ./arbor-files/arbor-files
 ./arbor-terminal/arbor-terminal
 ./arbor-settings/arbor-settings
@@ -231,12 +215,25 @@ cmake --build . -j$(nproc)
 ./arbor-system-monitor/arbor-system-monitor
 ```
 
+### Building Phase 7 Privacy Framework & Dashboard
+```bash
+cd Code/privacy
+mkdir build && cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . -j$(nproc)
+
+# Run Privacy Subsystem Tests & Dashboard:
+./test/privacy_tests
+./src/arbor-privacy-dashboard
+```
+
 **Requirements:**
 - Qt6 development libraries (Core, Gui, Widgets, Sql, Network, DBus, Charts)
 - CMake 3.24+
-- C++20 compatible compiler (GCC 10+, Clang 10+)
-- Linux with X11 or Wayland
+- C++20 compatible compiler (GCC 11+, Clang 13+)
+- Linux with X11/Wayland & D-Bus system bus
 
 ---
 
 **Disclaimer:** This is pre-alpha software under active development. Not recommended for production use. Use at your own risk.
+

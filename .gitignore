@@ -1,8 +1,11 @@
 # ArborOS .gitignore
 
-# ===== Build Artifacts =====
+# ===== ISO & OS Build Artifacts =====
 *.iso
 *.img
+*.squashfs
+rootfs.img
+mksquashfs-bin
 build/output/
 build/work/
 build/iso/
@@ -14,15 +17,45 @@ Code/build/output/
 Code/build/work/
 Code/build/iso/
 
-# Temporary build files
-*.squashfs
-rootfs.img
-mksquashfs-bin
+# ===== C++ / CMake / Qt Build Outputs =====
+build/
+**/build/
+bin/
+**/bin/
+out/
+**/out/
+CMakeFiles/
+**/CMakeFiles/
+CMakeCache.txt
+**/CMakeCache.txt
+cmake_install.cmake
+**/cmake_install.cmake
+Makefile
+**/Makefile
+compile_commands.json
+*.cmake.user
+*.user
+*.o
+*.obj
+*.a
+*.lib
+*.so
+*.dylib
+*.dll
+*.exe
+*.pdb
+
+# ===== Qt Generated Files =====
+moc_*.cpp
+ui_*.h
+qrc_*.cpp
+*.qrc.depends
 
 # ===== Logs =====
 *.log
 *.log.*
 build/*.log
+Code/build/*.log
 
 # ===== OS Generated Files =====
 .DS_Store
@@ -34,17 +67,18 @@ ehthumbs.db
 Thumbs.db
 desktop.ini
 
-# ===== Editor Files =====
+# ===== Editor & IDE Files =====
 *~
 *.swp
 *.swo
 *.swn
 .vscode/
 .idea/
+.vs/
 *.sublime-*
 .vim/
 
-# ===== Temporary Files =====
+# ===== Temporary & Backup Files =====
 *.tmp
 *.temp
 *.bak
@@ -55,7 +89,6 @@ desktop.ini
 __pycache__/
 *.py[cod]
 *$py.class
-*.so
 .Python
 env/
 venv/
@@ -70,12 +103,12 @@ venv/
 *.rar
 *.7z
 
-# ===== Test Files =====
+# ===== Test & Coverage =====
 test-results/
 coverage/
 .pytest_cache/
 
-# ===== Secrets (safety) =====
+# ===== Secrets & Credentials =====
 *.key
 *.pem
 *.p12
@@ -83,7 +116,7 @@ secrets.txt
 .env
 .env.*
 
-# ===== Keep These =====
+# ===== Keep Essential Files =====
 !.gitkeep
 !README.md
 !LICENSE

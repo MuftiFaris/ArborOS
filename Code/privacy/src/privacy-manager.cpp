@@ -17,9 +17,12 @@
 PrivacyManager::PrivacyManager(QObject* parent)
     : QObject(parent), m_settings(nullptr), m_auditDb(nullptr)
 {
-    // Setup paths
-    QString dataPath = QStandardPaths::writableLocation(QStandardPaths::ApplicationDataLocation);
-    m_configPath = dataPath + "/privacy";
+    // Setup paths - standardized to ~/.local/share/arbor/privacy
+    QString genericData = QStandardPaths::writableLocation(QStandardPaths::GenericDataLocation);
+    if (genericData.isEmpty()) {
+        genericData = QStandardPaths::writableLocation(QStandardPaths::HomeLocation) + "/.local/share";
+    }
+    m_configPath = genericData + "/arbor/privacy";
     m_auditDbPath = m_configPath + "/audit.db";
 
     // Create directories
