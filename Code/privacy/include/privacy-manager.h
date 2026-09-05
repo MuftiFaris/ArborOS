@@ -7,6 +7,7 @@
 #include <QList>
 #include <QDateTime>
 #include <QSettings>
+#include <QMutex>
 #include <sqlite3.h>
 
 /**
@@ -83,6 +84,7 @@ public:
         QString actionName() const;
         QString stateName() const;
         QString formattedTime() const;
+        bool isValid() const;
     };
 
     // App metadata
@@ -177,15 +179,23 @@ signals:
 private:
     explicit PrivacyManager(QObject* parent = nullptr);
     ~PrivacyManager();
+    PrivacyManager(const PrivacyManager&) = delete;
+    PrivacyManager& operator=(const PrivacyManager&) = delete;
 
     // Singleton instance
     static PrivacyManager* s_instance;
+    static class SingletonGuard {
+    public:
+        ~SingletonGuard();
+    } s_guard;
 
     // Internal data
     QSettings* m_settings;
     sqlite3* m_auditDb;
     QMap<QString, AppMetadata> m_appRegistry;
     QMap<QString, QMap<int, PermissionState>> m_policies;
+    QMutex m_dbMutex;  // Protects SQLite access
+    QMutex m_policyMutex;  // Protects policy map
 
     // Configuration paths
     QString m_configPath;

@@ -8,10 +8,20 @@
 #include <QTimer>
 #include <QCoreApplication>
 #include <QProcess>
+#include <QMutex>
+#include <QMutexLocker>
 #include <algorithm>
 
 // Singleton instance
 PrivacyManager* PrivacyManager::s_instance = nullptr;
+
+PrivacyManager::SingletonGuard::~SingletonGuard()
+{
+    if (PrivacyManager::s_instance) {
+        delete PrivacyManager::s_instance;
+        PrivacyManager::s_instance = nullptr;
+    }
+}
 
 PrivacyManager::PrivacyManager(QObject* parent)
     : QObject(parent), m_settings(nullptr), m_auditDb(nullptr)
@@ -37,7 +47,8 @@ PrivacyManager::PrivacyManager(QObject* parent)
 
     // Setup maintenance timer (cleanup old audit records every 6 hours)
     QTimer* maintenanceTimer = new QTimer(this);
-    connect(maintenanceTimer, &QTimer::timeout, this, &PrivacyManager::onAuditMaintenanceTimer);
+    connect(maintenanceTimer, &QTimer::timeout, this, &PrivacyManager::onAuditMaintenanceTimer, 
+            Qt::QueuedConnection);
     maintenanceTimer->start(6 * 60 * 60 * 1000);  // 6 hours
 
     // Load initial policies
@@ -60,29 +71,35 @@ PrivacyManager::PrivacyManager(QObject* parent)
 
 PrivacyManager::~PrivacyManager()
 {
+    QMutexLocker dbLocker(&m_dbMutex);
     if (m_auditDb) {
-        sqlite3_close(m_auditDb);
+        sqlite3_close_v2(m_auditDb);  // Safer than sqlite3_close
     }
 }
 
 PrivacyManager* PrivacyManager::instance()
 {
-    if (!s_instance) {
-        s_instance = new PrivacyManager(QCoreApplication::instance());
-    }
-    return s_instance;
+    static PrivacyManager s_instance_obj;
+    static PrivacyManager::SingletonGuard s_guard;
+    return &s_instance_obj;
 }
 
 bool PrivacyManager::initializeAuditDatabase()
 {
-    int rc = sqlite3_open(m_auditDbPath.toStdString().c_str(), &m_auditDb);
+    int rc = sqlite3_open_v2(m_auditDbPath.toStdString().c_str(), &m_auditDb,
+                            SQLITE_OPEN_READWRITE | SQLITE_OPEN_CREATE | 
+                            SQLITE_OPEN_FULLMUTEX,  // Thread-safe
+                            nullptr);
     if (rc != SQLITE_OK) {
         qCritical() << "Cannot open audit database:" << sqlite3_errmsg(m_auditDb);
         return false;
     }
 
     // Enable foreign keys
-    sqlite3_exec(m_auditDb, "PRAGMA foreign_keys = ON;", nullptr, nullptr, nullptr);
+    int fkrc = sqlite3_exec(m_auditDb, "PRAGMA foreign_keys = ON;", nullptr, nullptr, nullptr);
+    if (fkrc != SQLITE_OK) {
+        qWarning() << "Failed to enable foreign keys:" << sqlite3_errmsg(m_auditDb);
+    }
 
     if (!ensureAuditTableExists()) {
         return false;
@@ -102,8 +119,8 @@ bool PrivacyManager::ensureAuditTableExists()
             permission_category INTEGER NOT NULL,
             action INTEGER NOT NULL,
             permission_state INTEGER,
-            details TEXT,
-            user_decision TEXT,
+            details TEXT CHECK(length(details) <= 1000),
+            user_decision TEXT CHECK(length(user_decision) <= 100),
             FOREIGN KEY(app_id) REFERENCES apps(id)
         );
 
@@ -194,6 +211,19 @@ bool PrivacyManager::requestPermission(const QString& appId, PermissionCategory 
 void PrivacyManager::setPermission(const QString& appId, PermissionCategory category,
                                   PermissionState state)
 {
+    // Validate state
+    if (state < Denied || state > SystemDenied) {
+        qWarning() << "Invalid permission state:" << (int)state << "for" << appId;
+        return;
+    }
+
+    // Validate appId
+    if (appId.isEmpty() || appId.length() > 255) {
+        qWarning() << "Invalid appId length";
+        return;
+    }
+
+    QMutexLocker locker(&m_policyMutex);
     m_policies[appId][category] = state;
 
     // Save to settings
@@ -227,14 +257,17 @@ PrivacyManager::PermissionState PrivacyManager::checkPermissionPolicy(const QStr
 
 void PrivacyManager::denyAllPermissionsForApp(const QString& appId)
 {
-    for (int i = Microphone; i <= Audio; ++i) {
+    // Use static constant instead of hardcoded Audio enum
+    static const int PERMISSION_COUNT = 15;
+    for (int i = 0; i < PERMISSION_COUNT; ++i) {
         setPermission(appId, (PermissionCategory)i, Denied);
     }
 }
 
 void PrivacyManager::allowAllPermissionsForApp(const QString& appId)
 {
-    for (int i = Microphone; i <= Audio; ++i) {
+    static const int PERMISSION_COUNT = 15;
+    for (int i = 0; i < PERMISSION_COUNT; ++i) {
         setPermission(appId, (PermissionCategory)i, AllowedAlways);
     }
 }
@@ -254,54 +287,21 @@ void PrivacyManager::resetPermissionsForApp(const QString& appId)
 QList<PrivacyManager::PermissionRecord> PrivacyManager::getAuditTrail(int daysBack)
 {
     qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (daysBack * 24 * 60 * 60 * 1000);
-    QString whereClause = QString("WHERE timestamp >= %1 ORDER BY timestamp DESC").arg(cutoffTime);
-    return queryAuditTrail(whereClause);
-}
-
-QList<PrivacyManager::PermissionRecord> PrivacyManager::getAuditTrailForApp(const QString& appId,
-                                                                            int daysBack)
-{
-    qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (daysBack * 24 * 60 * 60 * 1000);
-    QString whereClause = QString("WHERE app_id = '%1' AND timestamp >= %2 ORDER BY timestamp DESC")
-                         .arg(appId, QString::number(cutoffTime));
-    return queryAuditTrail(whereClause);
-}
-
-QList<PrivacyManager::PermissionRecord> PrivacyManager::getAuditTrailForCategory(
-    PermissionCategory category, int daysBack)
-{
-    qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (daysBack * 24 * 60 * 60 * 1000);
-    QString whereClause = QString("WHERE permission_category = %1 AND timestamp >= %2 ORDER BY timestamp DESC")
-                         .arg((int)category, QString::number(cutoffTime));
-    return queryAuditTrail(whereClause);
-}
-
-void PrivacyManager::clearAuditTrail(int daysBack)
-{
-    if (daysBack == 0) {
-        sqlite3_exec(m_auditDb, "DELETE FROM permission_audits;", nullptr, nullptr, nullptr);
-    } else {
-        qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (daysBack * 24 * 60 * 60 * 1000);
-        QString sql = QString("DELETE FROM permission_audits WHERE timestamp < %1").arg(cutoffTime);
-        sqlite3_exec(m_auditDb, sql.toStdString().c_str(), nullptr, nullptr, nullptr);
-    }
-}
-
-QList<PrivacyManager::PermissionRecord> PrivacyManager::queryAuditTrail(const QString& whereClause,
-                                                                       int limit)
-{
+    
+    const char* sql = "SELECT timestamp, app_id, permission_category, action, permission_state, "
+                     "details, user_decision FROM permission_audits WHERE timestamp >= ? "
+                     "ORDER BY timestamp DESC LIMIT 1000";
+    
+    QMutexLocker locker(&m_dbMutex);
     QList<PermissionRecord> records;
-
-    QString sql = QString("SELECT timestamp, app_id, permission_category, action, permission_state, "
-                         "details, user_decision FROM permission_audits %1 LIMIT %2")
-                 .arg(whereClause, QString::number(limit));
-
     sqlite3_stmt* stmt;
-    int rc = sqlite3_prepare_v2(m_auditDb, sql.toStdString().c_str(), -1, &stmt, nullptr);
+    int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         qWarning() << "Cannot prepare audit query:" << sqlite3_errmsg(m_auditDb);
         return records;
     }
+
+    sqlite3_bind_int64(stmt, 1, cutoffTime);
 
     while (sqlite3_step(stmt) == SQLITE_ROW) {
         PermissionRecord record;
@@ -313,11 +313,140 @@ QList<PrivacyManager::PermissionRecord> PrivacyManager::queryAuditTrail(const QS
         record.details = QString::fromUtf8((const char*)sqlite3_column_text(stmt, 5));
         record.userDecision = QString::fromUtf8((const char*)sqlite3_column_text(stmt, 6));
 
-        records.append(record);
+        if (record.isValid()) {
+            records.append(record);
+        }
     }
 
     sqlite3_finalize(stmt);
     return records;
+}
+
+QList<PrivacyManager::PermissionRecord> PrivacyManager::getAuditTrailForApp(const QString& appId,
+                                                                            int daysBack)
+{
+    if (appId.isEmpty() || appId.length() > 255) {
+        qWarning() << "Invalid appId length";
+        return QList<PermissionRecord>();
+    }
+
+    qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (daysBack * 24 * 60 * 60 * 1000);
+    
+    const char* sql = "SELECT timestamp, app_id, permission_category, action, permission_state, "
+                     "details, user_decision FROM permission_audits WHERE app_id = ? AND timestamp >= ? "
+                     "ORDER BY timestamp DESC LIMIT 1000";
+    
+    QMutexLocker locker(&m_dbMutex);
+    QList<PermissionRecord> records;
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        qWarning() << "Cannot prepare audit query:" << sqlite3_errmsg(m_auditDb);
+        return records;
+    }
+
+    std::string appIdStr = appId.toStdString();
+    sqlite3_bind_text(stmt, 1, appIdStr.c_str(), appIdStr.length(), SQLITE_STATIC);
+    sqlite3_bind_int64(stmt, 2, cutoffTime);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        PermissionRecord record;
+        record.timestamp = sqlite3_column_int64(stmt, 0);
+        record.appId = QString::fromUtf8((const char*)sqlite3_column_text(stmt, 1));
+        record.category = (PermissionCategory)sqlite3_column_int(stmt, 2);
+        record.action = (AuditAction)sqlite3_column_int(stmt, 3);
+        record.state = (PermissionState)sqlite3_column_int(stmt, 4);
+        record.details = QString::fromUtf8((const char*)sqlite3_column_text(stmt, 5));
+        record.userDecision = QString::fromUtf8((const char*)sqlite3_column_text(stmt, 6));
+
+        if (record.isValid()) {
+            records.append(record);
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    return records;
+}
+
+QList<PrivacyManager::PermissionRecord> PrivacyManager::getAuditTrailForCategory(
+    PermissionCategory category, int daysBack)
+{
+    qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (daysBack * 24 * 60 * 60 * 1000);
+    
+    const char* sql = "SELECT timestamp, app_id, permission_category, action, permission_state, "
+                     "details, user_decision FROM permission_audits WHERE permission_category = ? AND timestamp >= ? "
+                     "ORDER BY timestamp DESC LIMIT 1000";
+    
+    QMutexLocker locker(&m_dbMutex);
+    QList<PermissionRecord> records;
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        qWarning() << "Cannot prepare audit query:" << sqlite3_errmsg(m_auditDb);
+        return records;
+    }
+
+    sqlite3_bind_int(stmt, 1, (int)category);
+    sqlite3_bind_int64(stmt, 2, cutoffTime);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        PermissionRecord record;
+        record.timestamp = sqlite3_column_int64(stmt, 0);
+        record.appId = QString::fromUtf8((const char*)sqlite3_column_text(stmt, 1));
+        record.category = (PermissionCategory)sqlite3_column_int(stmt, 2);
+        record.action = (AuditAction)sqlite3_column_int(stmt, 3);
+        record.state = (PermissionState)sqlite3_column_int(stmt, 4);
+        record.details = QString::fromUtf8((const char*)sqlite3_column_text(stmt, 5));
+        record.userDecision = QString::fromUtf8((const char*)sqlite3_column_text(stmt, 6));
+
+        if (record.isValid()) {
+            records.append(record);
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    return records;
+}
+
+void PrivacyManager::clearAuditTrail(int daysBack)
+{
+    QMutexLocker locker(&m_dbMutex);
+    
+    if (daysBack == 0) {
+        const char* sql = "DELETE FROM permission_audits;";
+        int rc = sqlite3_exec(m_auditDb, sql, nullptr, nullptr, nullptr);
+        if (rc != SQLITE_OK) {
+            qWarning() << "Failed to clear audit trail:" << sqlite3_errmsg(m_auditDb);
+        } else {
+            qDebug() << "Audit trail cleared (all records)";
+        }
+    } else {
+        qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (daysBack * 24 * 60 * 60 * 1000);
+        const char* sql = "DELETE FROM permission_audits WHERE timestamp < ?";
+        sqlite3_stmt* stmt;
+        int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
+        if (rc != SQLITE_OK) {
+            qWarning() << "Cannot prepare clear query:" << sqlite3_errmsg(m_auditDb);
+            return;
+        }
+        
+        sqlite3_bind_int64(stmt, 1, cutoffTime);
+        if (sqlite3_step(stmt) != SQLITE_DONE) {
+            qWarning() << "Failed to clear old audit records:" << sqlite3_errmsg(m_auditDb);
+        } else {
+            qDebug() << "Old audit records cleared (older than" << daysBack << "days)";
+        }
+        sqlite3_finalize(stmt);
+    }
+}
+
+QList<PrivacyManager::PermissionRecord> PrivacyManager::queryAuditTrail(const QString& whereClause,
+                                                                       int limit)
+{
+    // DEPRECATED - this function should not be used directly due to SQL injection risk
+    // Use specific query functions instead: getAuditTrail(), getAuditTrailForApp(), etc.
+    qWarning() << "Direct queryAuditTrail() usage is deprecated - use specific query functions";
+    return QList<PermissionRecord>();
 }
 
 void PrivacyManager::logAuditRecord(const PermissionRecord& record)
@@ -446,20 +575,75 @@ void PrivacyManager::logAccess(const QString& appId, PermissionCategory category
 QList<PrivacyManager::PermissionRecord> PrivacyManager::getCurrentActivity()
 {
     qint64 fiveMinutesAgo = QDateTime::currentMSecsSinceEpoch() - (5 * 60 * 1000);
-    QString whereClause = QString("WHERE timestamp >= %1 AND action = %2 ORDER BY timestamp DESC")
-                         .arg(QString::number(fiveMinutesAgo), QString::number((int)AuditUsed));
-    return queryAuditTrail(whereClause, 50);
+    
+    const char* sql = "SELECT timestamp, app_id, permission_category, action, permission_state, "
+                     "details, user_decision FROM permission_audits WHERE timestamp >= ? AND action = ? "
+                     "ORDER BY timestamp DESC LIMIT 50";
+    
+    QMutexLocker locker(&m_dbMutex);
+    QList<PermissionRecord> records;
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        qWarning() << "Cannot prepare activity query:" << sqlite3_errmsg(m_auditDb);
+        return records;
+    }
+
+    sqlite3_bind_int64(stmt, 1, fiveMinutesAgo);
+    sqlite3_bind_int(stmt, 2, (int)AuditUsed);
+
+    while (sqlite3_step(stmt) == SQLITE_ROW) {
+        PermissionRecord record;
+        record.timestamp = sqlite3_column_int64(stmt, 0);
+        record.appId = QString::fromUtf8((const char*)sqlite3_column_text(stmt, 1));
+        record.category = (PermissionCategory)sqlite3_column_int(stmt, 2);
+        record.action = (AuditAction)sqlite3_column_int(stmt, 3);
+        record.state = (PermissionState)sqlite3_column_int(stmt, 4);
+        record.details = QString::fromUtf8((const char*)sqlite3_column_text(stmt, 5));
+        record.userDecision = QString::fromUtf8((const char*)sqlite3_column_text(stmt, 6));
+
+        if (record.isValid()) {
+            records.append(record);
+        }
+    }
+
+    sqlite3_finalize(stmt);
+    return records;
 }
 
 bool PrivacyManager::isAppCurrentlyAccessing(const QString& appId, PermissionCategory category)
 {
+    if (appId.isEmpty() || appId.length() > 255) {
+        return false;
+    }
+
     qint64 oneSecondAgo = QDateTime::currentMSecsSinceEpoch() - 1000;
-    QString whereClause = QString("WHERE app_id = '%1' AND permission_category = %2 "
-                                 "AND timestamp >= %3 AND action = %4")
-                         .arg(appId, QString::number((int)category),
-                              QString::number(oneSecondAgo), QString::number((int)AuditUsed));
-    QList<PermissionRecord> records = queryAuditTrail(whereClause, 1);
-    return !records.isEmpty();
+    
+    const char* sql = "SELECT COUNT(*) FROM permission_audits WHERE app_id = ? AND permission_category = ? "
+                     "AND timestamp >= ? AND action = ?";
+    
+    QMutexLocker locker(&m_dbMutex);
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        qWarning() << "Cannot prepare access check query:" << sqlite3_errmsg(m_auditDb);
+        return false;
+    }
+
+    std::string appIdStr = appId.toStdString();
+    sqlite3_bind_text(stmt, 1, appIdStr.c_str(), appIdStr.length(), SQLITE_STATIC);
+    sqlite3_bind_int(stmt, 2, (int)category);
+    sqlite3_bind_int64(stmt, 3, oneSecondAgo);
+    sqlite3_bind_int(stmt, 4, (int)AuditUsed);
+
+    bool isAccessing = false;
+    if (sqlite3_step(stmt) == SQLITE_ROW) {
+        int count = sqlite3_column_int(stmt, 0);
+        isAccessing = (count > 0);
+    }
+
+    sqlite3_finalize(stmt);
+    return isAccessing;
 }
 
 void PrivacyManager::setGlobalMicrophoneEnabled(bool enabled)
@@ -471,6 +655,7 @@ void PrivacyManager::setGlobalMicrophoneEnabled(bool enabled)
 
 bool PrivacyManager::isGlobalMicrophoneEnabled() const
 {
+    // Default: enabled (true) - users can opt out
     return m_settings->value("GlobalSettings/MicrophoneEnabled", true).toBool();
 }
 
@@ -483,6 +668,7 @@ void PrivacyManager::setGlobalCameraEnabled(bool enabled)
 
 bool PrivacyManager::isGlobalCameraEnabled() const
 {
+    // Default: enabled (true) - users can opt out
     return m_settings->value("GlobalSettings/CameraEnabled", true).toBool();
 }
 
@@ -495,6 +681,7 @@ void PrivacyManager::setGlobalNetworkEnabled(bool enabled)
 
 bool PrivacyManager::isGlobalNetworkEnabled() const
 {
+    // Default: enabled (true) - users can opt out
     return m_settings->value("GlobalSettings/NetworkEnabled", true).toBool();
 }
 
@@ -561,9 +748,32 @@ void PrivacyManager::onSystemPolicyChange()
 
 void PrivacyManager::onAuditMaintenanceTimer()
 {
+    QMutexLocker locker(&m_dbMutex);
+    
+    if (!m_auditDb) {
+        qWarning() << "Audit DB not available, skipping maintenance";
+        return;
+    }
+
     // Keep only last 90 days of audit trail
-    clearAuditTrail(90);
-    qDebug() << "Audit maintenance completed";
+    qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (90 * 24 * 60 * 60 * 1000);
+    
+    const char* sql = "DELETE FROM permission_audits WHERE timestamp < ?";
+    sqlite3_stmt* stmt;
+    int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
+    if (rc != SQLITE_OK) {
+        qCritical() << "Cannot prepare maintenance query:" << sqlite3_errmsg(m_auditDb);
+        return;
+    }
+
+    sqlite3_bind_int64(stmt, 1, cutoffTime);
+    if (sqlite3_step(stmt) != SQLITE_DONE) {
+        qCritical() << "Failed to clean old records:" << sqlite3_errmsg(m_auditDb);
+    } else {
+        qDebug() << "Audit maintenance completed";
+    }
+
+    sqlite3_finalize(stmt);
 }
 
 QString PrivacyManager::permissionCategoryToString(PermissionCategory category)
@@ -640,6 +850,18 @@ QString PrivacyManager::PermissionRecord::stateName() const
 QString PrivacyManager::PermissionRecord::formattedTime() const
 {
     return QDateTime::fromMSecsSinceEpoch(timestamp).toString("yyyy-MM-dd hh:mm:ss");
+}
+
+bool PrivacyManager::PermissionRecord::isValid() const
+{
+    // Validate record before adding to results
+    if (appId.isEmpty() || appId.length() > 255) return false;
+    if (timestamp <= 0) return false;
+    if (details.length() > 1000) return false;
+    if (userDecision.length() > 100) return false;
+    if (action < AuditRequested || action > AuditChanged) return false;
+    if (state < Denied || state > SystemDenied) return false;
+    return true;
 }
 
 int PrivacyManager::countUnnecessaryPermissions(const AppMetadata& app)
