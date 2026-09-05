@@ -1,33 +1,22 @@
-# Privacy FAQ
+# ArborOS Privacy & User Control - Frequently Asked Questions (FAQ)
 
-## Common Questions
+### Q1: How does ArborOS handle app permissions compared to Ubuntu or Windows?
+**A:** Standard desktop OSes grant desktop applications broad user-level access by default. ArborOS uses a centralized `PrivacyManager` engine that intercepts hardware (mic/camera), file access, and network requests, enforcing default-deny or ask-on-first-use policies.
 
-**Q: Can I deny all permissions to an app?**  
-A: Yes. Go to Settings → Privacy → [Category], select app, choose Deny.
+### Q2: What happens when I enable the Global Microphone Kill Switch?
+**A:** All incoming microphone streams are instantly blocked, active recording buffers are cleared, and `requestPermission()` immediately returns `false` to all requesting applications regardless of their individual permission settings.
 
-**Q: What does "Ask every time" mean?**  
-A: App must ask permission each time it wants access. You can approve or deny each request.
+### Q3: How is the Privacy Score calculated?
+**A:** The score starts at 100 base points. Points are deducted for unnecessary permissions granted to applications (-15 for dangerous sensors like camera/mic, -5 for unneeded file/network access), while bonus points (+5 to +10) are awarded for active global kill switches and VPN enforcement.
 
-**Q: Where is my audit trail stored?**  
-A: Encrypted in ~/.local/share/arbor-privacy/audit.db. Only accessible locally.
+### Q4: Is the Audit Trail secure from application tampering?
+**A:** Yes. The SQLite audit log (`audit.db`) is stored in protected system space with restricted file access permissions (`0600`) and managed exclusively by the `PrivacyManager` system process.
 
-**Q: Can I delete my audit history?**  
-A: Yes, Privacy Dashboard → Settings → Clear history. Supports time ranges (last 7/30/90 days or all).
+### Q5: Can I restrict an app from accessing specific folders like ~/Documents while allowing app data storage?
+**A:** Yes! The `FileAccessControl` subsystem automatically sandboxes apps to their designated directory (`~/.local/share/<app-id>`) while blocking access to system locations (`/etc`, `/root`) and prompting you before allowing access to user folders (`~/Documents`, `~/Desktop`).
 
-**Q: Does ArborOS track my activity?**  
-A: No. Privacy controls are LOCAL ONLY. Your data never leaves your computer.
+### Q6: Does DNS logging record my browsing content?
+**A:** No. DNS logging only records domain resolution requests (e.g., `api.example.com`), query types (A/AAAA), and timestamped application identifiers to give you visibility into network connections. No payload or page content is inspected.
 
-**Q: Can developers see what I deny?**  
-A: No. Permission decisions are private to you. Audit trail is never shared.
-
-**Q: What if an app doesn't work without a permission?**  
-A: Grant the permission, then review the audit trail to understand why it's needed.
-
-**Q: How do I know if my microphone/camera is active?**  
-A: Status bar shows indicator. Privacy Dashboard shows real-time activity.
-
-**Q: Can I undo permission changes?**  
-A: Yes. Go back to Settings and change permission again. Audit trail records changes.
-
-**Q: What's my privacy score?**  
-A: 0-100 rating based on granted permissions. Higher = more private. See Privacy Dashboard.
+### Q7: Can I backup or restore my privacy policies?
+**A:** Yes. Individual or global policies can be exported as JSON via `PrivacyManager::exportPolicy()` and re-imported on another ArborOS installation.
