@@ -1,4 +1,6 @@
 #include "privacy-dashboard-widget.h"
+#include "../../privacy/include/privacy-manager.h"
+#include "../../privacy/include/permission-policy.h"
 #include <QVBoxLayout>
 #include <QHBoxLayout>
 #include <QHeaderView>
@@ -240,7 +242,7 @@ QWidget* PrivacyDashboardWidget::createPermissionsTab()
     filterLayout->addWidget(new QLabel("Category:"));
     m_categoryFilter = new QComboBox();
     m_categoryFilter->addItems({
-        "All", "Microphone", "Camera", "File Access", "Network", "Location"
+        "All", "Microphone", "Camera", "Files", "Network", "Location"
     });
     filterLayout->addWidget(m_categoryFilter);
     filterLayout->addStretch();
@@ -358,34 +360,32 @@ void PrivacyDashboardWidget::populateOverviewTab()
 {
     calculatePrivacyScores();
 
-    // Calculate system privacy score
-    int totalScore = 0;
-    for (const auto& info : m_appPrivacyData) {
-        totalScore += info.privacyScore;
+    PrivacyManager* pm = PrivacyManager::instance();
+    int liveScore = pm->calculatePrivacyScore();
+
+    m_systemPrivacyScore->setText(QString("%1%").arg(liveScore));
+    m_overallPrivacyBar->setValue(liveScore);
+
+    auto auditTrail = pm->getAuditTrail(1);
+    int deniedCount = 0;
+    for (const auto& rec : auditTrail) {
+        if (rec.action == PrivacyManager::AuditDenied) deniedCount++;
     }
-    int avgScore = m_appPrivacyData.isEmpty() ? 100 : totalScore / m_appPrivacyData.size();
 
-    m_systemPrivacyScore->setText(QString("%1%").arg(avgScore));
-    m_overallPrivacyBar->setValue(avgScore);
-
-    // Overview summary
     QString overview = QString(
         "<b>Active Applications:</b> %1<br>"
-        "<b>Permissions Granted:</b> %2<br>"
+        "<b>Privacy Score:</b> %2 / 100<br>"
         "<b>Access Denied (24h):</b> %3<br>"
         "<b>Last Updated:</b> %4"
     ).arg(m_appPrivacyData.size())
-     .arg("N/A")
-     .arg("N/A")
+     .arg(liveScore)
+     .arg(deniedCount)
      .arg(QDateTime::currentDateTime().toString("HH:mm:ss"));
 
     m_overviewLabel->setText(overview);
 
-    // Recommended actions
-    QString actions = "• Review microphone/camera access permissions<br>"
-                     "• Check network usage by applications<br>"
-                     "• Consider enabling VPN for sensitive apps";
-    m_recommendedActionsLabel->setText(actions);
+    QString recommendationsText = pm->getPrivacyRecommendations();
+    m_recommendedActionsLabel->setText(recommendationsText);
 }
 
 void PrivacyDashboardWidget::populateApplicationsTab()
@@ -412,22 +412,22 @@ void PrivacyDashboardWidget::populateActivityTab()
 {
     m_activityHistoryTable->setRowCount(0);
 
+    PrivacyManager* pm = PrivacyManager::instance();
+    auto records = pm->getAuditTrail(7);
+
     int row = 0;
-    for (const auto& appId : m_appPrivacyData.keys()) {
-        const AppPrivacyInfo& info = m_appPrivacyData[appId];
+    for (const auto& rec : records) {
+        m_activityHistoryTable->insertRow(row);
+        m_activityHistoryTable->setItem(row, 0, new QTableWidgetItem(rec.formattedTime()));
+        m_activityHistoryTable->setItem(row, 1, new QTableWidgetItem(rec.appId));
+        m_activityHistoryTable->setItem(row, 2, new QTableWidgetItem(rec.categoryName()));
+        m_activityHistoryTable->setItem(row, 3, new QTableWidgetItem(rec.actionName()));
+        m_activityHistoryTable->setItem(row, 4, new QTableWidgetItem(rec.details));
+        m_activityHistoryTable->setItem(row, 5, new QTableWidgetItem(rec.stateName()));
+        m_activityHistoryTable->setItem(row, 6, new QTableWidgetItem(rec.action == PrivacyManager::AuditDenied ? "Blocked" : "Allowed"));
 
-        for (const QString& activity : info.recentActivity) {
-            m_activityHistoryTable->insertRow(row);
-            m_activityHistoryTable->setItem(row, 0, new QTableWidgetItem(QDateTime::currentDateTime().toString("HH:mm:ss")));
-            m_activityHistoryTable->setItem(row, 1, new QTableWidgetItem(info.appName));
-            m_activityHistoryTable->setItem(row, 2, new QTableWidgetItem("Mixed"));
-            m_activityHistoryTable->setItem(row, 3, new QTableWidgetItem("Access"));
-            m_activityHistoryTable->setItem(row, 4, new QTableWidgetItem(activity));
-            m_activityHistoryTable->setItem(row, 5, new QTableWidgetItem("Allowed"));
-            m_activityHistoryTable->setItem(row, 6, new QTableWidgetItem("✓"));
-
-            row++;
-        }
+        row++;
+        if (row >= 100) break;
     }
 }
 
@@ -454,87 +454,78 @@ void PrivacyDashboardWidget::populatePermissionsTab()
 {
     m_permissionsTable->setRowCount(0);
 
+    PrivacyManager* pm = PrivacyManager::instance();
+    auto apps = pm->getAllRegisteredApps();
+
     int row = 0;
-    QList<QString> categories = {"Microphone", "Camera", "File Access", "Network"};
-
-    for (const auto& appId : m_appPrivacyData.keys()) {
-        const AppPrivacyInfo& info = m_appPrivacyData[appId];
-
-        for (const QString& perm : info.permissionsGranted) {
-            m_permissionsTable->insertRow(row);
-            m_permissionsTable->setItem(row, 0, new QTableWidgetItem(info.appName));
-            m_permissionsTable->setItem(row, 1, new QTableWidgetItem(perm));
-            m_permissionsTable->setItem(row, 2, new QTableWidgetItem("Granted"));
-            m_permissionsTable->setItem(row, 3, new QTableWidgetItem("Active"));
-            m_permissionsTable->setItem(row, 4, new QTableWidgetItem("Just now"));
-
-            row++;
+    for (const auto& app : apps) {
+        for (int c = PrivacyManager::Microphone; c <= PrivacyManager::Audio; ++c) {
+            PrivacyManager::PermissionCategory cat = (PrivacyManager::PermissionCategory)c;
+            PrivacyManager::PermissionState state = pm->getPermission(app.id, cat);
+            if (state == PrivacyManager::AllowedAlways || state == PrivacyManager::AllowedOnce) {
+                m_permissionsTable->insertRow(row);
+                m_permissionsTable->setItem(row, 0, new QTableWidgetItem(app.name));
+                m_permissionsTable->setItem(row, 1, new QTableWidgetItem(PermissionPolicy::getPermissionExplanation(cat)));
+                m_permissionsTable->setItem(row, 2, new QTableWidgetItem(state == PrivacyManager::AllowedAlways ? "Always" : "Once"));
+                m_permissionsTable->setItem(row, 3, new QTableWidgetItem("Active"));
+                m_permissionsTable->setItem(row, 4, new QTableWidgetItem("Just now"));
+                row++;
+            }
         }
     }
 }
 
 void PrivacyDashboardWidget::calculatePrivacyScores()
 {
-    // Simulate privacy score calculation based on access patterns
     m_appPrivacyData.clear();
+    PrivacyManager* pm = PrivacyManager::instance();
+    auto registered = pm->getAllRegisteredApps();
 
-    // Sample app data (in real implementation, would query PrivacyManager)
-    AppPrivacyInfo browser;
-    browser.appId = "firefox";
-    browser.appName = "Firefox";
-    browser.privacyScore = 65;
-    browser.accessCount = 24;
-    browser.denialCount = 3;
-    browser.permissionsGranted = {"Network", "File Access"};
-    browser.recentActivity = {"DNS query to google.com", "File read from Downloads"};
-    m_appPrivacyData["firefox"] = browser;
+    if (registered.isEmpty()) {
+        // Sample baseline apps for UI rendering if app registry empty
+        registered.append({"firefox", "Firefox", "/usr/bin/firefox", "", {PrivacyManager::Network, PrivacyManager::Files}, 0, 0});
+        registered.append({"arbor-terminal", "Arbor Terminal", "/usr/bin/arbor-terminal", "", {PrivacyManager::Files}, 0, 0});
+        registered.append({"cheese", "Cheese Camera", "/usr/bin/cheese", "", {PrivacyManager::Camera, PrivacyManager::Microphone}, 0, 0});
+    }
 
-    AppPrivacyInfo camera;
-    camera.appId = "cheese";
-    camera.appName = "Cheese";
-    camera.privacyScore = 80;
-    camera.accessCount = 5;
-    camera.denialCount = 1;
-    camera.permissionsGranted = {"Camera"};
-    camera.recentActivity = {"Camera access requested"};
-    m_appPrivacyData["cheese"] = camera;
+    for (const auto& app : registered) {
+        AppPrivacyInfo info;
+        info.appId = app.id;
+        info.appName = app.name;
+        info.privacyScore = 100 - (pm->countUnnecessaryPermissions(app) * 15) - (pm->countDangerousAppPermissions(app.id) * 20);
+        info.privacyScore = qMax(10, qMin(100, info.privacyScore));
+        info.accessCount = app.accessCount;
+        info.denialCount = 0;
 
-    AppPrivacyInfo mic;
-    mic.appId = "audacity";
-    mic.appName = "Audacity";
-    mic.privacyScore = 75;
-    mic.accessCount = 8;
-    mic.denialCount = 0;
-    mic.permissionsGranted = {"Microphone", "File Access"};
-    mic.recentActivity = {"Microphone recording", "File save"};
-    m_appPrivacyData["audacity"] = mic;
+        for (int c = PrivacyManager::Microphone; c <= PrivacyManager::Audio; ++c) {
+            PrivacyManager::PermissionCategory cat = (PrivacyManager::PermissionCategory)c;
+            if (pm->getPermission(app.id, cat) == PrivacyManager::AllowedAlways) {
+                info.permissionsGranted.append(PermissionPolicy::getPermissionExplanation(cat));
+            }
+        }
+
+        m_appPrivacyData[app.id] = info;
+    }
 }
 
 void PrivacyDashboardWidget::generateRecommendations()
 {
     m_recommendations.clear();
+    PrivacyManager* pm = PrivacyManager::instance();
+
+    if (!pm->isGlobalMicrophoneEnabled()) {
+        m_recommendations.append({"Global Microphone Mute Active", "low", "System", "Microphone is muted system-wide", "Enable"});
+    }
+
+    if (!pm->isGlobalCameraEnabled()) {
+        m_recommendations.append({"Global Camera Block Active", "low", "System", "Camera disabled system-wide", "Enable"});
+    }
 
     m_recommendations.append({
-        "Disable unnecessary microphone access",
+        "Review camera access permissions",
         "high",
-        "audacity",
-        "Audacity has microphone access but is not actively using it. Consider revoking this permission to improve privacy.",
+        "cheese",
+        "Cheese Camera has active access to the webcam. Revoke if not in use.",
         "Revoke Permission"
-    });
-
-    m_recommendations.append({
-        "Monitor network activity",
-        "medium",
-        "firefox",
-        "Firefox has made 24 network access attempts in the last 24 hours. Review DNS queries for suspicious domains.",
-        "View DNS Log"
-    });
-
-    m_recommendations.append({
-        "Enable VPN for sensitive apps",
-        "medium",
-        "*",
-        "Consider enabling VPN for applications that access sensitive data or require privacy protection.",
-        "Configure VPN"
     });
 }
