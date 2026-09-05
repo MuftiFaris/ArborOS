@@ -490,6 +490,8 @@ void PrivacyManager::logAuditRecord(const PermissionRecord& record)
 
 int PrivacyManager::calculatePrivacyScore()
 {
+    QMutexLocker locker(&m_policyMutex);  // Protect m_policies read
+    
     int score = 100;
 
     // Deduct for each app with unnecessary permissions
@@ -556,6 +558,8 @@ QList<PrivacyManager::AppMetadata> PrivacyManager::getAllRegisteredApps()
 
 QList<QString> PrivacyManager::getAppsWithPermission(PermissionCategory category)
 {
+    QMutexLocker locker(&m_policyMutex);  // Protect m_policies read
+    
     QList<QString> apps;
     for (const auto& appId : m_policies.keys()) {
         if (m_policies[appId].contains((int)category)) {
@@ -699,6 +703,8 @@ bool PrivacyManager::isGlobalNetworkEnabled() const
 
 QString PrivacyManager::exportPolicy(const QString& appId)
 {
+    QMutexLocker locker(&m_policyMutex);  // Protect m_policies read
+    
     QJsonObject policyObj;
     policyObj["appId"] = appId;
     policyObj["exportTime"] = QDateTime::currentDateTime().toString();
