@@ -12,16 +12,7 @@
 #include <QMutexLocker>
 #include <algorithm>
 
-// Singleton instance
-PrivacyManager* PrivacyManager::s_instance = nullptr;
-
-PrivacyManager::SingletonGuard::~SingletonGuard()
-{
-    if (PrivacyManager::s_instance) {
-        delete PrivacyManager::s_instance;
-        PrivacyManager::s_instance = nullptr;
-    }
-}
+// No static member needed - uses static local variable pattern in instance()
 
 PrivacyManager::PrivacyManager(QObject* parent)
     : QObject(parent), m_settings(nullptr), m_auditDb(nullptr)
@@ -222,6 +213,12 @@ void PrivacyManager::setPermission(const QString& appId, PermissionCategory cate
         return;
     }
 
+    // Validate category enum bounds
+    if (category < Microphone || category > Audio) {
+        qWarning() << "Invalid permission category:" << (int)category;
+        return;
+    }
+
     QMutexLocker policyLocker(&m_policyMutex);
     m_policies[appId][category] = state;
 
@@ -419,6 +416,12 @@ void PrivacyManager::clearAuditTrail(int daysBack)
 {
     QMutexLocker locker(&m_dbMutex);
     
+    // Validate daysBack parameter
+    if (daysBack < 0) {
+        qWarning() << "clearAuditTrail: daysBack must be non-negative, got" << daysBack;
+        return;
+    }
+
     if (daysBack == 0) {
         const char* sql = "DELETE FROM permission_audits;";
         int rc = sqlite3_exec(m_auditDb, sql, nullptr, nullptr, nullptr);
@@ -460,6 +463,12 @@ QList<PrivacyManager::PermissionRecord> PrivacyManager::queryAuditTrail(const QS
 
 void PrivacyManager::logAuditRecord(const PermissionRecord& record)
 {
+    // Pre-validate record before insert
+    if (!record.isValid()) {
+        qWarning() << "Cannot log invalid audit record for app" << record.appId;
+        return;
+    }
+
     QMutexLocker locker(&m_dbMutex);  // CRITICAL: Protect SQLite access
     
     const char* sql = "INSERT INTO permission_audits "
@@ -475,8 +484,8 @@ void PrivacyManager::logAuditRecord(const PermissionRecord& record)
 
     // Convert strings to C++ strings that live until finalize
     std::string appIdStr = record.appId.toStdString();
-    std::string detailsStr = record.details.toStdString();
-    std::string decisionStr = record.userDecision.toStdString();
+    std::string detailsStr = record.details.toUtf8().constData();
+    std::string decisionStr = record.userDecision.toUtf8().constData();
 
     sqlite3_bind_int64(stmt, 1, record.timestamp);
     sqlite3_bind_text(stmt, 2, appIdStr.c_str(), -1, SQLITE_TRANSIENT);
@@ -495,12 +504,17 @@ void PrivacyManager::logAuditRecord(const PermissionRecord& record)
 
 int PrivacyManager::calculatePrivacyScore()
 {
-    QMutexLocker locker(&m_policyMutex);  // Protect m_policies read
+    // Copy policies under lock, release before calculations to avoid deadlock
+    QList<QString> appIds;
+    {
+        QMutexLocker locker(&m_policyMutex);
+        appIds = m_policies.keys();
+    }  // Release m_policyMutex here
     
     int score = 100;
 
-    // Deduct for each app with unnecessary permissions
-    for (const auto& appId : m_policies.keys()) {
+    // Deduct for each app with unnecessary permissions (no lock held - helper methods can acquire)
+    for (const auto& appId : appIds) {
         AppMetadata metadata = getAppMetadata(appId);
         int unnecessary = countUnnecessaryPermissions(metadata);
         score -= (unnecessary * 2);  // -2 per unnecessary permission
@@ -519,6 +533,8 @@ int PrivacyManager::calculatePrivacyScore()
 
 QString PrivacyManager::getPrivacyRecommendations()
 {
+    QMutexLocker locker(&m_policyMutex);  // Protect m_policies access
+    
     QString recommendations;
 
     // Check for apps with excessive permissions

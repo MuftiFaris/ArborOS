@@ -182,12 +182,7 @@ private:
     PrivacyManager(const PrivacyManager&) = delete;
     PrivacyManager& operator=(const PrivacyManager&) = delete;
 
-    // Singleton instance
-    static PrivacyManager* s_instance;
-    static class SingletonGuard {
-    public:
-        ~SingletonGuard();
-    } s_guard;
+    // Singleton - uses static local variable pattern (thread-safe in C++11)
 
     // Internal data
     QSettings* m_settings;
