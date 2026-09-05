@@ -74,7 +74,6 @@ PrivacyManager::~PrivacyManager()
 PrivacyManager* PrivacyManager::instance()
 {
     static PrivacyManager s_instance_obj;
-    static PrivacyManager::SingletonGuard s_guard;
     return &s_instance_obj;
 }
 
