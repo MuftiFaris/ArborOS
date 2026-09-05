@@ -13,6 +13,8 @@
 #include <algorithm>
 
 // No static member needed - uses static local variable pattern in instance()
+
+PrivacyManager::PrivacyManager(QObject* parent)
     : QObject(parent), m_settings(nullptr), m_auditDb(nullptr)
 {
     // Setup paths
