@@ -198,15 +198,22 @@ private:
     QString m_configPath;
     QString m_auditDbPath;
 
-    // Initialize audit database
-    bool initializeAuditDatabase();
-    bool ensureAuditTableExists();
+    // Helper to validate database is available
+    inline bool isAuditDbAvailable() const {
+        if (!m_auditDb) {
+            qWarning() << "Audit database not available";
+            return false;
+        }
+        return true;
+    }
 
     // Internal permission check
     PermissionState checkPermissionPolicy(const QString& appId, PermissionCategory category);
 
     // Audit logging
     void logAuditRecord(const PermissionRecord& record);
+    // DEPRECATED - DO NOT USE
+    [[deprecated("Use specific query functions instead: getAuditTrail(), getAuditTrailForApp(), etc.")]]
     QList<PermissionRecord> queryAuditTrail(const QString& whereClause = "", int limit = 1000);
 
     // Privacy calculation helpers

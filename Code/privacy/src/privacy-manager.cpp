@@ -62,6 +62,11 @@ PrivacyManager::PrivacyManager(QObject* parent)
 
 PrivacyManager::~PrivacyManager()
 {
+    // Sync settings before cleanup
+    if (m_settings) {
+        m_settings->sync();
+    }
+
     QMutexLocker dbLocker(&m_dbMutex);
     if (m_auditDb) {
         sqlite3_close_v2(m_auditDb);  // Safer than sqlite3_close
@@ -181,8 +186,8 @@ bool PrivacyManager::requestPermission(const QString& appId, PermissionCategory 
         logAuditRecord({QDateTime::currentMSecsSinceEpoch(), appId, category,
                        AuditGranted, AllowedOnce, details, "policy_allowed_once"});
         logAccess(appId, category, details);
-        // Reset to AskEveryTime after use
-        setPermission(appId, category, AskEveryTime);
+        // NOTE: Reset to AskEveryTime happens in onPermissionDialogResponse after user confirms
+        // Do NOT reset here - allow the app to use the permission first
         return true;
     }
 
@@ -257,8 +262,8 @@ PrivacyManager::PermissionState PrivacyManager::checkPermissionPolicy(const QStr
 
 void PrivacyManager::denyAllPermissionsForApp(const QString& appId)
 {
-    // Use static constant instead of hardcoded Audio enum
-    static const int PERMISSION_COUNT = 15;
+    // Calculate from actual enum max value to avoid hardcoding
+    static const int PERMISSION_COUNT = static_cast<int>(Audio) + 1;
     for (int i = 0; i < PERMISSION_COUNT; ++i) {
         setPermission(appId, (PermissionCategory)i, Denied);
     }
@@ -266,7 +271,7 @@ void PrivacyManager::denyAllPermissionsForApp(const QString& appId)
 
 void PrivacyManager::allowAllPermissionsForApp(const QString& appId)
 {
-    static const int PERMISSION_COUNT = 15;
+    static const int PERMISSION_COUNT = static_cast<int>(Audio) + 1;
     for (int i = 0; i < PERMISSION_COUNT; ++i) {
         setPermission(appId, (PermissionCategory)i, AllowedAlways);
     }
@@ -422,6 +427,11 @@ void PrivacyManager::clearAuditTrail(int daysBack)
         return;
     }
 
+    if (!m_auditDb) {
+        qWarning() << "Audit database not available";
+        return;
+    }
+
     if (daysBack == 0) {
         const char* sql = "DELETE FROM permission_audits;";
         int rc = sqlite3_exec(m_auditDb, sql, nullptr, nullptr, nullptr);
@@ -429,9 +439,12 @@ void PrivacyManager::clearAuditTrail(int daysBack)
             qWarning() << "Failed to clear audit trail:" << sqlite3_errmsg(m_auditDb);
         } else {
             qDebug() << "Audit trail cleared (all records)";
+            // Log this action itself (system action, not app-specific)
+            logAuditRecord({QDateTime::currentMSecsSinceEpoch(), "system", Files,
+                           AuditChanged, Denied, "clearAuditTrail(0)", "system_maintenance"});
         }
     } else {
-        qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (daysBack * 24 * 60 * 60 * 1000);
+        qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (qint64(daysBack) * 24 * 60 * 60 * 1000);
         const char* sql = "DELETE FROM permission_audits WHERE timestamp < ?";
         sqlite3_stmt* stmt;
         int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
@@ -445,6 +458,10 @@ void PrivacyManager::clearAuditTrail(int daysBack)
             qWarning() << "Failed to clear old audit records:" << sqlite3_errmsg(m_auditDb);
         } else {
             qDebug() << "Old audit records cleared (older than" << daysBack << "days)";
+            // Log this action
+            logAuditRecord({QDateTime::currentMSecsSinceEpoch(), "system", Files,
+                           AuditChanged, Denied, QString("clearAuditTrail(%1)").arg(daysBack), 
+                           "system_maintenance"});
         }
         sqlite3_finalize(stmt);
     }
@@ -469,7 +486,12 @@ void PrivacyManager::logAuditRecord(const PermissionRecord& record)
         return;
     }
 
-    QMutexLocker locker(&m_dbMutex);  // CRITICAL: Protect SQLite access
+    QMutexLocker locker(&m_dbMutex);
+    
+    if (!m_auditDb) {
+        qWarning() << "Audit database not available, cannot log record";
+        return;
+    }
     
     const char* sql = "INSERT INTO permission_audits "
                      "(timestamp, app_id, permission_category, action, permission_state, details, user_decision) "
@@ -786,6 +808,13 @@ void PrivacyManager::onPermissionDialogResponse(const QString& appId, Permission
 {
     setPermission(appId, category, response);
 
+    // If user selected AllowedOnce, reset to AskEveryTime for next time
+    if (response == AllowedOnce) {
+        QTimer::singleShot(100, this, [this, appId, category]() {
+            setPermission(appId, category, AskEveryTime);
+        });
+    }
+
     if (response != Denied && response != SystemDenied) {
         logAccess(appId, category, "Dialog response");
     }
@@ -808,7 +837,8 @@ void PrivacyManager::onAuditMaintenanceTimer()
     }
 
     // Keep only last 90 days of audit trail
-    qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (90 * 24 * 60 * 60 * 1000);
+    // Use qint64 for calculation to avoid overflow
+    qint64 cutoffTime = QDateTime::currentMSecsSinceEpoch() - (qint64(90) * 24 * 60 * 60 * 1000);
     
     const char* sql = "DELETE FROM permission_audits WHERE timestamp < ?";
     sqlite3_stmt* stmt;
