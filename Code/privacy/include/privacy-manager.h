@@ -183,6 +183,7 @@ private:
     PrivacyManager& operator=(const PrivacyManager&) = delete;
 
     // Singleton - uses static local variable pattern (thread-safe in C++11)
+    // No need for explicit guard or s_instance static member
 
     // Internal data
     QSettings* m_settings;
@@ -197,6 +198,10 @@ private:
     // Configuration paths
     QString m_configPath;
     QString m_auditDbPath;
+
+    // Initialize audit database
+    bool initializeAuditDatabase();
+    bool ensureAuditTableExists();
 
     // Helper to validate database is available
     inline bool isAuditDbAvailable() const {
