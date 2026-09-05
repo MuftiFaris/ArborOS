@@ -120,8 +120,7 @@ bool PrivacyManager::ensureAuditTableExists()
             action INTEGER NOT NULL,
             permission_state INTEGER,
             details TEXT CHECK(length(details) <= 1000),
-            user_decision TEXT CHECK(length(user_decision) <= 100),
-            FOREIGN KEY(app_id) REFERENCES apps(id)
+            user_decision TEXT CHECK(length(user_decision) <= 100)
         );
 
         CREATE INDEX IF NOT EXISTS idx_audit_timestamp ON permission_audits(timestamp);
@@ -223,16 +222,19 @@ void PrivacyManager::setPermission(const QString& appId, PermissionCategory cate
         return;
     }
 
-    QMutexLocker locker(&m_policyMutex);
+    QMutexLocker policyLocker(&m_policyMutex);
     m_policies[appId][category] = state;
 
-    // Save to settings
+    // Protect QSettings access
+    QMutexLocker settingsLocker(&m_settingsMutex);
     m_settings->beginGroup("Permissions");
     m_settings->beginGroup(appId);
     m_settings->setValue(permissionCategoryToString(category), (int)state);
     m_settings->endGroup();
     m_settings->endGroup();
     m_settings->sync();
+    settingsLocker.unlock();
+    policyLocker.unlock();
 
     logAuditRecord({QDateTime::currentMSecsSinceEpoch(), appId, category,
                    AuditChanged, state, "", ""});
@@ -275,7 +277,8 @@ void PrivacyManager::allowAllPermissionsForApp(const QString& appId)
 
 void PrivacyManager::resetPermissionsForApp(const QString& appId)
 {
-    QMutexLocker locker(&m_policyMutex);  // CRITICAL: Protect m_policies access
+    QMutexLocker policyLocker(&m_policyMutex);
+    QMutexLocker settingsLocker(&m_settingsMutex);
     
     m_settings->beginGroup("Permissions");
     m_settings->remove(appId);
@@ -447,9 +450,11 @@ void PrivacyManager::clearAuditTrail(int daysBack)
 QList<PrivacyManager::PermissionRecord> PrivacyManager::queryAuditTrail(const QString& whereClause,
                                                                        int limit)
 {
-    // DEPRECATED - this function should not be used directly due to SQL injection risk
+    // DEPRECATED - DO NOT USE. This function is removed to prevent SQL injection.
     // Use specific query functions instead: getAuditTrail(), getAuditTrailForApp(), etc.
-    qWarning() << "Direct queryAuditTrail() usage is deprecated - use specific query functions";
+    Q_UNUSED(whereClause);
+    Q_UNUSED(limit);
+    qCritical() << "ERROR: queryAuditTrail() is deprecated and should never be called";
     return QList<PermissionRecord>();
 }
 
@@ -540,11 +545,13 @@ QString PrivacyManager::getPrivacyRecommendations()
 
 void PrivacyManager::registerApp(const AppMetadata& metadata)
 {
+    QMutexLocker locker(&m_registryMutex);
     m_appRegistry[metadata.id] = metadata;
 }
 
 PrivacyManager::AppMetadata PrivacyManager::getAppMetadata(const QString& appId)
 {
+    QMutexLocker locker(&m_registryMutex);
     if (m_appRegistry.contains(appId)) {
         return m_appRegistry[appId];
     }
@@ -579,10 +586,12 @@ void PrivacyManager::logAccess(const QString& appId, PermissionCategory category
                    AuditUsed, AllowedAlways, details, ""});
 
     // Update access count in metadata
+    QMutexLocker locker(&m_registryMutex);
     if (m_appRegistry.contains(appId)) {
         m_appRegistry[appId].lastAccessTime = QDateTime::currentMSecsSinceEpoch();
         m_appRegistry[appId].accessCount++;
     }
+    locker.unlock();
 
     emit accessLogged(appId, (int)category, QDateTime::currentMSecsSinceEpoch());
 }
@@ -664,40 +673,49 @@ bool PrivacyManager::isAppCurrentlyAccessing(const QString& appId, PermissionCat
 
 void PrivacyManager::setGlobalMicrophoneEnabled(bool enabled)
 {
+    QMutexLocker locker(&m_settingsMutex);
     m_settings->setValue("GlobalSettings/MicrophoneEnabled", enabled);
     m_settings->sync();
+    locker.unlock();
     emit globalSettingChanged(Microphone, enabled);
 }
 
 bool PrivacyManager::isGlobalMicrophoneEnabled() const
 {
     // Default: enabled (true) - users can opt out
+    QMutexLocker locker(&m_settingsMutex);
     return m_settings->value("GlobalSettings/MicrophoneEnabled", true).toBool();
 }
 
 void PrivacyManager::setGlobalCameraEnabled(bool enabled)
 {
+    QMutexLocker locker(&m_settingsMutex);
     m_settings->setValue("GlobalSettings/CameraEnabled", enabled);
     m_settings->sync();
+    locker.unlock();
     emit globalSettingChanged(Camera, enabled);
 }
 
 bool PrivacyManager::isGlobalCameraEnabled() const
 {
     // Default: enabled (true) - users can opt out
+    QMutexLocker locker(&m_settingsMutex);
     return m_settings->value("GlobalSettings/CameraEnabled", true).toBool();
 }
 
 void PrivacyManager::setGlobalNetworkEnabled(bool enabled)
 {
+    QMutexLocker locker(&m_settingsMutex);
     m_settings->setValue("GlobalSettings/NetworkEnabled", enabled);
     m_settings->sync();
+    locker.unlock();
     emit globalSettingChanged(Network, enabled);
 }
 
 bool PrivacyManager::isGlobalNetworkEnabled() const
 {
     // Default: enabled (true) - users can opt out
+    QMutexLocker locker(&m_settingsMutex);
     return m_settings->value("GlobalSettings/NetworkEnabled", true).toBool();
 }
 
@@ -875,8 +893,9 @@ bool PrivacyManager::PermissionRecord::isValid() const
     // Validate record before adding to results
     if (appId.isEmpty() || appId.length() > 255) return false;
     if (timestamp <= 0) return false;
-    if (details.length() > 1000) return false;
-    if (userDecision.length() > 100) return false;
+    // Validate UTF-8 byte size, not character count
+    if (details.toUtf8().size() > 1000) return false;
+    if (userDecision.toUtf8().size() > 100) return false;
     if (action < AuditRequested || action > AuditChanged) return false;
     if (state < Denied || state > SystemDenied) return false;
     return true;

@@ -196,6 +196,8 @@ private:
     QMap<QString, QMap<int, PermissionState>> m_policies;
     QMutex m_dbMutex;  // Protects SQLite access
     QMutex m_policyMutex;  // Protects policy map
+    QMutex m_settingsMutex;  // Protects QSettings access
+    QMutex m_registryMutex;  // Protects app registry
 
     // Configuration paths
     QString m_configPath;
