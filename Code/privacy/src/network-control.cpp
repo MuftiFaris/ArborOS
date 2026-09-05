@@ -1,6 +1,10 @@
 #include "network-control.h"
+#include "network-permission-control.h"
 
-NetworkControl::NetworkControl(PrivacyManager* pm) : m_privacyManager(pm), m_vpnEnabled(false) {}
+NetworkControl::NetworkControl(PrivacyManager* pm)
+    : m_privacyManager(pm), m_vpnEnabled(false)
+{
+}
 
 bool NetworkControl::requestNetworkAccess(const QString& appId)
 {
@@ -22,8 +26,16 @@ void NetworkControl::logDNSQuery(const QString& appId, const QString& domain)
 
 QStringList NetworkControl::getDNSQueries(const QString& appId, int minutesBack)
 {
-    // TODO: Query audit trail for DNS records
-    return QStringList();
+    if (!m_privacyManager) return QStringList();
+
+    auto audit = m_privacyManager->getAuditTrailForApp(appId, 1);
+    QStringList queries;
+    for (const auto& rec : audit) {
+        if (rec.category == PrivacyManager::Network && rec.details.startsWith("DNS: ")) {
+            queries.append(rec.details.mid(5));
+        }
+    }
+    return queries;
 }
 
 void NetworkControl::enableVPN(bool enable)
