@@ -1,26 +1,184 @@
 #include "file-access-control.h"
+#include <QDir>
+#include <QFileInfo>
+#include <QStandardPaths>
+#include <QTextStream>
+#include <QDebug>
 
-FileAccessControl::FileAccessControl(PrivacyManager* pm) : m_privacyManager(pm) {}
+FileAccessControl::FileAccessControl(PrivacyManager* pm)
+    : m_privacyManager(pm)
+{
+    initializeSystemRestrictedPaths();
+}
+
+FileAccessControl::~FileAccessControl()
+{
+}
+
+void FileAccessControl::initializeSystemRestrictedPaths()
+{
+    m_systemRestrictedPaths = {
+        "/etc",
+        "/root",
+        "/boot",
+        "/sys",
+        "/proc",
+        "/dev",
+        "/sbin",
+        "/usr/sbin"
+    };
+}
+
+QString FileAccessControl::canonicalizePath(const QString& path) const
+{
+    QFileInfo info(path);
+    QString canonical = info.canonicalFilePath();
+    if (canonical.isEmpty()) {
+        canonical = QDir::cleanPath(path);
+    }
+    return canonical;
+}
+
+bool FileAccessControl::isProtectedSystemPath(const QString& path) const
+{
+    QString clean = canonicalizePath(path);
+    for (const QString& sysPath : m_systemRestrictedPaths) {
+        if (clean == sysPath || clean.startsWith(sysPath + "/")) {
+            return true;
+        }
+    }
+    return false;
+}
 
 bool FileAccessControl::requestFileAccess(const QString& appId, const QString& path, bool write)
 {
     if (!m_privacyManager) return false;
-    return m_privacyManager->requestPermission(appId, PrivacyManager::Files, 
-        QString("File %1: %2").arg(write ? "write" : "read", path));
+
+    if (isProtectedSystemPath(path)) {
+        m_privacyManager->logAccess(appId, PrivacyManager::Files,
+            QString("System path denied: %1 (%2)").arg(path, write ? "write" : "read"));
+        return false;
+    }
+
+    bool allowed = canAppAccessPath(appId, path, write);
+    if (!allowed) {
+        allowed = m_privacyManager->requestPermission(appId, PrivacyManager::Files,
+            QString("File %1: %2").arg(write ? "write" : "read", path));
+    } else {
+        m_privacyManager->logAccess(appId, PrivacyManager::Files,
+            QString("File %1: %2").arg(write ? "write" : "read", path));
+    }
+    return allowed;
 }
 
 void FileAccessControl::setSandboxDirectory(const QString& appId, const QString& path)
 {
-    // TODO: Configure AppArmor/SELinux rules
+    SandboxRule& rule = m_appRules[appId];
+    rule.appId = appId;
+    rule.defaultDataDir = canonicalizePath(path);
 }
 
 QStringList FileAccessControl::getSandboxDirectories(const QString& appId)
 {
-    return {QString("%1/.local/share/%2").arg(QDir::homePath(), appId)};
+    QString home = QDir::homePath();
+    QString defaultAppDir = QString("%1/.local/share/%2").arg(home, appId);
+
+    if (m_appRules.contains(appId) && !m_appRules[appId].defaultDataDir.isEmpty()) {
+        return { m_appRules[appId].defaultDataDir, defaultAppDir };
+    }
+    return { defaultAppDir };
 }
 
-bool FileAccessControl::canAppAccessPath(const QString& appId, const QString& path)
+bool FileAccessControl::canAppAccessPath(const QString& appId, const QString& path, bool write)
 {
+    if (!m_privacyManager) return false;
+
+    if (isProtectedSystemPath(path)) return false;
+
+    QString clean = canonicalizePath(path);
+
+    // App internal data directory always allowed
+    QStringList sandboxes = getSandboxDirectories(appId);
+    for (const QString& box : sandboxes) {
+        if (clean == box || clean.startsWith(box + "/")) {
+            return true;
+        }
+    }
+
+    // Check user whitelist
+    if (m_appRules.contains(appId)) {
+        for (const QString& white : m_appRules[appId].whitelistedPaths) {
+            if (clean == white || clean.startsWith(white + "/")) {
+                return true;
+            }
+        }
+    }
+
+    // Otherwise check global Files permission state
     auto perm = m_privacyManager->getPermission(appId, PrivacyManager::Files);
     return (perm == PrivacyManager::AllowedAlways || perm == PrivacyManager::AllowedOnce);
+}
+
+FileAccessControl::PathAccessLevel FileAccessControl::evaluatePathAccess(const QString& appId, const QString& path)
+{
+    if (isProtectedSystemPath(path)) return AccessDenied;
+
+    if (canAppAccessPath(appId, path, true)) return AccessReadWrite;
+    if (canAppAccessPath(appId, path, false)) return AccessReadOnly;
+
+    return AccessAskUser;
+}
+
+void FileAccessControl::addPathToWhitelist(const QString& appId, const QString& path)
+{
+    SandboxRule& rule = m_appRules[appId];
+    rule.appId = appId;
+    QString clean = canonicalizePath(path);
+    if (!rule.whitelistedPaths.contains(clean)) {
+        rule.whitelistedPaths.append(clean);
+    }
+}
+
+void FileAccessControl::removePathFromWhitelist(const QString& appId, const QString& path)
+{
+    if (m_appRules.contains(appId)) {
+        QString clean = canonicalizePath(path);
+        m_appRules[appId].whitelistedPaths.removeAll(clean);
+    }
+}
+
+QStringList FileAccessControl::getAppWhitelist(const QString& appId) const
+{
+    if (m_appRules.contains(appId)) {
+        return m_appRules[appId].whitelistedPaths;
+    }
+    return QStringList();
+}
+
+QString FileAccessControl::generateAppArmorProfile(const QString& appId) const
+{
+    QString profile;
+    QTextStream stream(&profile);
+
+    stream << "# AppArmor profile generated by ArborOS FileAccessControl for " << appId << "\n";
+    stream << "profile arbor_" << appId << " flags=(attach_disconnected) {\n";
+    stream << "  #include <abstractions/base>\n\n";
+
+    stream << "  # Deny system sensitive paths\n";
+    for (const QString& sysPath : m_systemRestrictedPaths) {
+        stream << "  deny " << sysPath << "/** rwx,\n";
+    }
+
+    stream << "\n  # App Sandbox Data Directory\n";
+    QString home = QDir::homePath();
+    stream << "  " << home << "/.local/share/" << appId << "/** rw,\n";
+
+    if (m_appRules.contains(appId)) {
+        for (const QString& path : m_appRules[appId].whitelistedPaths) {
+            stream << "  " << path << "/** rw,\n";
+        }
+    }
+
+    stream << "}\n";
+    return profile;
 }
