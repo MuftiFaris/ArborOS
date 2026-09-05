@@ -249,6 +249,7 @@ PrivacyManager::PermissionState PrivacyManager::getPermission(const QString& app
 PrivacyManager::PermissionState PrivacyManager::checkPermissionPolicy(const QString& appId,
                                                                      PermissionCategory category)
 {
+    QMutexLocker locker(&m_policyMutex);  // CRITICAL: Protect m_policies access
     if (m_policies.contains(appId) && m_policies[appId].contains((int)category)) {
         return m_policies[appId][(int)category];
     }
@@ -294,7 +295,7 @@ QList<PrivacyManager::PermissionRecord> PrivacyManager::getAuditTrail(int daysBa
     
     QMutexLocker locker(&m_dbMutex);
     QList<PermissionRecord> records;
-    sqlite3_stmt* stmt;
+    sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         qWarning() << "Cannot prepare audit query:" << sqlite3_errmsg(m_auditDb);
@@ -338,15 +339,16 @@ QList<PrivacyManager::PermissionRecord> PrivacyManager::getAuditTrailForApp(cons
     
     QMutexLocker locker(&m_dbMutex);
     QList<PermissionRecord> records;
-    sqlite3_stmt* stmt;
+    sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         qWarning() << "Cannot prepare audit query:" << sqlite3_errmsg(m_auditDb);
         return records;
     }
 
+    // FIX: Keep strings alive until finalize (use SQLITE_TRANSIENT not SQLITE_STATIC)
     std::string appIdStr = appId.toStdString();
-    sqlite3_bind_text(stmt, 1, appIdStr.c_str(), appIdStr.length(), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, appIdStr.c_str(), appIdStr.length(), SQLITE_TRANSIENT);
     sqlite3_bind_int64(stmt, 2, cutoffTime);
 
     while (sqlite3_step(stmt) == SQLITE_ROW) {
@@ -379,7 +381,7 @@ QList<PrivacyManager::PermissionRecord> PrivacyManager::getAuditTrailForCategory
     
     QMutexLocker locker(&m_dbMutex);
     QList<PermissionRecord> records;
-    sqlite3_stmt* stmt;
+    sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         qWarning() << "Cannot prepare audit query:" << sqlite3_errmsg(m_auditDb);
@@ -451,24 +453,31 @@ QList<PrivacyManager::PermissionRecord> PrivacyManager::queryAuditTrail(const QS
 
 void PrivacyManager::logAuditRecord(const PermissionRecord& record)
 {
+    QMutexLocker locker(&m_dbMutex);  // CRITICAL: Protect SQLite access
+    
     const char* sql = "INSERT INTO permission_audits "
                      "(timestamp, app_id, permission_category, action, permission_state, details, user_decision) "
                      "VALUES (?, ?, ?, ?, ?, ?, ?);";
 
-    sqlite3_stmt* stmt;
+    sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         qWarning() << "Cannot prepare insert:" << sqlite3_errmsg(m_auditDb);
         return;
     }
 
+    // Convert strings to C++ strings that live until finalize
+    std::string appIdStr = record.appId.toStdString();
+    std::string detailsStr = record.details.toStdString();
+    std::string decisionStr = record.userDecision.toStdString();
+
     sqlite3_bind_int64(stmt, 1, record.timestamp);
-    sqlite3_bind_text(stmt, 2, record.appId.toStdString().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 2, appIdStr.c_str(), -1, SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 3, (int)record.category);
     sqlite3_bind_int(stmt, 4, (int)record.action);
     sqlite3_bind_int(stmt, 5, (int)record.state);
-    sqlite3_bind_text(stmt, 6, record.details.toStdString().c_str(), -1, SQLITE_TRANSIENT);
-    sqlite3_bind_text(stmt, 7, record.userDecision.toStdString().c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 6, detailsStr.c_str(), -1, SQLITE_TRANSIENT);
+    sqlite3_bind_text(stmt, 7, decisionStr.c_str(), -1, SQLITE_TRANSIENT);
 
     if (sqlite3_step(stmt) != SQLITE_DONE) {
         qWarning() << "Cannot insert audit record:" << sqlite3_errmsg(m_auditDb);
@@ -582,7 +591,7 @@ QList<PrivacyManager::PermissionRecord> PrivacyManager::getCurrentActivity()
     
     QMutexLocker locker(&m_dbMutex);
     QList<PermissionRecord> records;
-    sqlite3_stmt* stmt;
+    sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         qWarning() << "Cannot prepare activity query:" << sqlite3_errmsg(m_auditDb);
@@ -623,15 +632,16 @@ bool PrivacyManager::isAppCurrentlyAccessing(const QString& appId, PermissionCat
                      "AND timestamp >= ? AND action = ?";
     
     QMutexLocker locker(&m_dbMutex);
-    sqlite3_stmt* stmt;
+    sqlite3_stmt* stmt = nullptr;
     int rc = sqlite3_prepare_v2(m_auditDb, sql, -1, &stmt, nullptr);
     if (rc != SQLITE_OK) {
         qWarning() << "Cannot prepare access check query:" << sqlite3_errmsg(m_auditDb);
         return false;
     }
 
+    // FIX: Keep strings alive until finalize (use SQLITE_TRANSIENT not SQLITE_STATIC)
     std::string appIdStr = appId.toStdString();
-    sqlite3_bind_text(stmt, 1, appIdStr.c_str(), appIdStr.length(), SQLITE_STATIC);
+    sqlite3_bind_text(stmt, 1, appIdStr.c_str(), appIdStr.length(), SQLITE_TRANSIENT);
     sqlite3_bind_int(stmt, 2, (int)category);
     sqlite3_bind_int64(stmt, 3, oneSecondAgo);
     sqlite3_bind_int(stmt, 4, (int)AuditUsed);
