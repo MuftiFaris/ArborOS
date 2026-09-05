@@ -52,7 +52,7 @@ ArborOS/
 - ✅ **Phase 1** - Repository Foundation  
 - ✅ **Phase 2** - Base Linux System (Bootable, Network, 315MB RAM)
 - ✅ **Phase 3** - Hardware Support (GPU, Audio, WiFi firmware, Power management)
-- ⚠️ **Phase 4** - Installer (Config ready, deferred to Phase 6+)
+- ✅ **Phase 4** - Installer (Calamares Configs, Module Specs & Build Pipeline Integrated)
 - ✅ **Phase 5** - Desktop Environment (LXQt, 400MB RAM, Working)
 - ✅ **Phase 6** - Core Applications (ALL COMPLETE: 11 tasks, 8,736 lines, flawless)
 - ✅ **Phase 7** - Privacy & User Control (ALL COMPLETE: 8 tasks, PrivacyManager, Dashboard, UI, Audited)
@@ -63,7 +63,7 @@ ArborOS/
 ## Current System Status
 
 **ArborOS Phase 5 (Stable)** (`ArborOS-0.5.iso` - ~1.2-1.5 GB)  
-**ArborOS Phase 6 (In Development)** - Core applications branch: `feature/desktop-environment`
+**ArborOS Phase 6 & 7 (Complete)** - Branch: `feature/privacy-user-control`
 
 **Working Features:**
 - ✅ Bootable live system (Fedora 39 base)
@@ -90,8 +90,8 @@ ArborOS/
 - Breeze icon theme
 
 **Phase 4 Status:**
-- ⚠️ Calamares installer configs ready
-- ⏸️ Deferred to Phase 6+ (desktop now available)
+- ✅ Calamares installer configs & branding complete
+- ✅ GUI & Desktop Environment runtime dependencies resolved in Phase 5 & 6
 
 **Known Limitations:**
 - Manual installation required (installer coming in Phase 6+)
